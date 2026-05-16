@@ -1,0 +1,82 @@
+/* Abyssal Design Language — Deep Ocean Bioluminescence */
+
+:root {
+  /* Background palette */
+  --abyss-deepest: #0a0a1a;
+  --abyss-deep: #0d1b2a;
+  --abyss-mid: #1b2838;
+  --abyss-shallow: #2d3748;
+
+  /* Bioluminescent accents */
+  --bio-cyan: #00f5d4;
+  --bio-blue: #7b2ff7;
+  --bio-purple: #f15bb5;
+  --bio-green: #00ff87;
+  --bio-amber: #fee440;
+  --bio-red: #ff6b6b;
+  --bio-orange: #ff9f1c;
+
+  /* Edge colors by type */
+  --edge-supports: #00ff87;
+  --edge-challenges: #ff6b6b;
+  --edge-refines: #00f5d4;
+  --edge-diverges: #ff9f1c;
+  --edge-merges: #7b2ff7;
+  --edge-depends_on: #f15bb5;
+  --edge-references: #fee440;
+  --edge-temporal: #00f5d4;
+  --edge-replaces: #ff6b6b;
+  --edge-inherits: #7b2ff7;
+
+  /* Text */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Surfaces */
+  --surface-glass: rgba(13, 27, 42, 0.85);
+  --surface-glass-border: rgba(0, 245, 212, 0.15);
+  --surface-hover: rgba(0, 245, 212, 0.08);
+
+  /* Glow */
+  --glow-cyan: 0 0 20px rgba(0, 245, 212, 0.4), 0 0 60px rgba(0, 245, 212, 0.15);
+  --glow-blue: 0 0 20px rgba(123, 47, 247, 0.4), 0 0 60px rgba(123, 47, 247, 0.15);
+  --glow-purple: 0 0 20px rgba(241, 91, 181, 0.4), 0 0 60px rgba(241, 91, 181, 0.15);
+  --glow-green: 0 0 20px rgba(0, 255, 135, 0.4), 0 0 60px rgba(0, 255, 135, 0.15);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Utility glow classes */
+.glow-cyan { box-shadow: var(--glow-cyan); }
+.glow-blue { box-shadow: var(--glow-blue); }
+.glow-purple { box-shadow: var(--glow-purple); }
+.glow-green { box-shadow: var(--glow-green); }
+
+.glass {
+  background: var(--surface-glass);
+  border: 1px solid var(--surface-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--abyss-deepest);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--abyss-shallow);
+  border-radius: var(--radius-sm);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bio-cyan);
+}

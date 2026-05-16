@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "../styles/abyssal.css";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--abyss-deepest);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--bio-cyan);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(0, 245, 212, 0.3);
+  color: #fff;
+}
