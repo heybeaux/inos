@@ -113,13 +113,16 @@ For early stages, in-process jobs are fine. Scale to BullMQ + Redis when we have
 | Layer | Choice | Why |
 |-------|--------|-----|
 | **Provider** | **OpenRouter** | Already configured. Access to all models (Gemini, GPT, Claude). Cost-effective. |
-| **Transcript Ingestion** | **Frontier model** (GPT-4.1 / Claude Opus) | Best at extracting structured reasoning from messy text. |
-| **Canvas Summary** | **Mid-tier model** (Claude Sonnet / Gemini Pro) | Good summarization, lower cost. Runs frequently. |
-| **Fact Dedup** | **Mid-tier model** | Only runs on borderline cases (70-90% title similarity). |
+| **Local Provider** | **Ollama / oMLX / LM Studio** | Privacy-first, offline-capable, zero API cost. Apple Silicon (MLX) gets native acceleration. |
+| **Transcript Ingestion** | **Frontier model** (GPT-4.1 / Claude Opus) OR **Local large model** (Llama 3.3 70B via Ollama) | Best at extracting structured reasoning from messy text. |
+| **Canvas Summary** | **Mid-tier model** (Claude Sonnet / Gemini Pro) OR **Local mid model** (Mistral/Mixtral via Ollama) | Good summarization, lower cost. Runs frequently. |
+| **Fact Dedup** | **Local small model** (Phi-3 / Llama 3.2 3B via oMLX) | Only runs on borderline cases (70-90% title similarity). Tiny model, fast, cheap. |
 | **Zoom-out Assessment** | **Frontier model** (Opus / Gemini Pro) | Meta-reasoning about the entire graph. Needs deep comprehension. |
 | **Natural Language Queries** | **Mid-tier model** + **SQLite FTS** | Translate NL query to node filters + graph traversals. |
 
 ### Model Routing Strategy
+
+#### Cloud Mode (OpenRouter)
 
 | Task | Model | Cost Est. |
 |------|-------|-----------|
@@ -128,6 +131,59 @@ For early stages, in-process jobs are fine. Scale to BullMQ + Redis when we have
 | Fact dedup (borderline pair) | Gemini Flash | ~$0.001 |
 | Zoom-out assessment (full graph) | Opus | ~$0.20-0.50 |
 | NL query → graph traversal | Gemini Flash | ~$0.005 |
+
+#### Local Mode (Ollama / oMLX / LM Studio)
+
+| Task | Model | Hardware | Performance |
+|------|-------|----------|-------------|
+| Transcript → graph (1hr meeting) | Llama 3.3 70B (Ollama) | 48GB+ VRAM | ~30-60s |
+| Canvas summary regeneration | Mistral 7B / Mixtral 8x7B | 16GB+ VRAM | ~5-10s |
+| Fact dedup (borderline pair) | Phi-3 / Llama 3.2 3B (oMLX) | 4GB+ RAM (Apple Silicon) | ~0.5-1s |
+| NL query → graph traversal | Phi-3 / Qwen 2.5 3B | 4GB+ RAM | ~0.5s |
+| Zoom-out assessment | **Cloud fallback** (needs deep reasoning) | N/A | — |
+
+Zoom-out assessment requires frontier-level comprehension and doesn't have a viable local option yet. We recommend cloud for this task regardless of mode.
+
+### Provider Abstraction
+
+The backend uses a **provider-agnostic interface** — swap between cloud and local with a config change:
+
+```typescript
+interface LLMProvider {
+  generate(prompt: string, opts: GenerationOpts): Promise<GenerationResult>;
+  generateWithTools(prompt: string, tools: Tool[]): Promise<ToolCallResult>;
+  stream(prompt: string, opts: GenerationOpts): AsyncIterable<string>;
+}
+```
+
+Implementations:
+- `OpenRouterProvider` — cloud models via OpenRouter API
+- `OllamaProvider` — local models via Ollama REST API
+- `MLXProvider` — Apple Silicon native via oMLX
+- `LMStudioProvider` — local models via LM Studio server
+
+Config-driven model routing:
+
+```yaml
+# inos.config.yaml
+llm:
+  mode: hybrid  # 'cloud' | 'local' | 'hybrid'
+  cloud:
+    provider: openrouter
+    defaultModel: anthropic/claude-sonnet-4
+  local:
+    provider: ollama  # or 'omlx', 'lmstudio'
+    host: http://localhost:11434
+    models:
+      transcript: llama3.3:70b
+      summary: mixtral:8x7b
+      dedup: phi3:3.8b
+      query: qwen2.5:3b
+  fallback:
+    # If local model fails, fall back to cloud
+    enabled: true
+    provider: openrouter
+```
 
 ---
 
@@ -148,10 +204,11 @@ For early stages, in-process jobs are fine. Scale to BullMQ + Redis when we have
 
 | Environment | Target | Notes |
 |------------|--------|-------|
-| **Development** | Local (`next dev` + local Turso) | Hot reload, fast iteration. |
+| **Development** | Local (`next dev` + local SQLite) | Hot reload, fast iteration. |
 | **Staging** | Vercel (frontend) + Fly.io (backend) | Matches Engram deployment pattern. |
 | **Production** | Vercel (frontend) + Fly.io (backend + Turso) | Scalable, edge-cached reads. |
 | **Self-hosted (enterprise)** | Docker Compose | Full stack in containers. PostgreSQL optional. |
+| **Local/Offline** | Desktop app (Tauri or Electron) | Full stack runs locally. SQLite + Ollama/oMLX. Zero cloud dependency. Privacy-first. |
 
 ---
 
