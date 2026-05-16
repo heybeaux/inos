@@ -57,4 +57,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ query }),
     }),
+
+  // Ingest transcript
+  ingestTranscript: (text: string, format?: string, topic?: string) =>
+    fetchJson<{
+      graph: InosGraph;
+      stats: {
+        nodesExtracted: number;
+        edgesExtracted: number;
+        factsExtracted: number;
+        decisionsExtracted: number;
+        questionsExtracted: number;
+      };
+    }>('/api/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ text, format, topic }),
+    }),
 };

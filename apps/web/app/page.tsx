@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useGraphStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +9,11 @@ import { FactsPanel } from '@/components/panels/FactsPanel';
 import { QueryPanel } from '@/components/panels/QueryPanel';
 import { TimelinePanel } from '@/components/panels/TimelinePanel';
 import { NodeDetailPanel } from '@/components/panels/NodeDetailPanel';
+import { ImportPanel } from '@/components/panels/ImportPanel';
+import { CommandPaletteContainer } from '@/components/ui/CommandPalette';
+import { CanvasToolbar } from '@/components/canvas/CanvasToolbar';
+import { ContextMenu } from '@/components/canvas/ContextMenu';
+import { InlineEditorContainer } from '@/components/nodes/InlineEditor';
 
 // Dynamic import to avoid SSR issues with Three.js
 const Canvas3D = dynamic(() => import('@/components/canvas/Canvas3D'), {
@@ -27,7 +32,7 @@ const Canvas3D = dynamic(() => import('@/components/canvas/Canvas3D'), {
 
 // Top bar with canvas name and controls
 function TopBar() {
-  const { activePanel, setActivePanel, closePanels } = useGraphStore();
+  const { activePanel, setActivePanel, closePanels, setCommandPaletteOpen } = useGraphStore();
 
   return (
     <motion.div
@@ -54,7 +59,27 @@ function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Cmd+K shortcut button */}
+        <button
+          onClick={() => setCommandPaletteOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all duration-200"
+          style={{
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            border: '1px solid var(--surface-glass-border)',
+          }}
+        >
+          <span>⌘</span>
+          <kbd
+            className="text-xs px-1.5 py-0.5 rounded font-mono"
+            style={{ background: 'var(--abyss-shallow)', color: 'var(--text-muted)' }}
+          >
+            K
+          </kbd>
+        </button>
+
         {[
+          { key: 'import' as const, label: 'Import' },
           { key: 'summary' as const, label: 'Summary' },
           { key: 'facts' as const, label: 'Facts' },
           { key: 'query' as const, label: 'Query' },
@@ -96,6 +121,11 @@ function Legend() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 1, duration: 0.5 }}
       className="fixed bottom-4 left-4 z-20 glass rounded-xl px-4 py-3"
+      style={{
+        background: 'var(--surface-glass)',
+        border: '1px solid var(--surface-glass-border)',
+        backdropFilter: 'blur(12px)',
+      }}
     >
       <p
         className="text-xs font-semibold mb-2 uppercase tracking-wider"
@@ -116,23 +146,53 @@ function Legend() {
 }
 
 export default function CanvasPage() {
-  const { loadDemo } = useGraphStore();
+  const { loadDemo, handleCanvasClick } = useGraphStore();
   const [ready, setReady] = useState(false);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadDemo();
     setReady(true);
   }, [loadDemo]);
 
+  // Handle canvas clicks for toolbar placement mode
+  const handleContainerClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (canvasContainerRef.current) {
+        const rect = canvasContainerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        handleCanvasClick(x, y);
+      }
+    },
+    [handleCanvasClick]
+  );
+
   if (!ready) return null;
 
   return (
     <main className="w-screen h-screen relative overflow-hidden" style={{ background: 'var(--abyss-deepest)' }}>
       <TopBar />
-      <div className="w-full h-full pt-14">
+      <div
+        ref={canvasContainerRef}
+        className="w-full h-full pt-14"
+        onClick={handleContainerClick}
+      >
         <Canvas3D />
       </div>
       <Legend />
+
+      {/* Canvas toolbar */}
+      <CanvasToolbar />
+
+      {/* Command palette */}
+      <CommandPaletteContainer />
+
+      {/* Context menu */}
+      <ContextMenu />
+
+      {/* Inline editor */}
+      <InlineEditorContainer />
 
       {/* Side panels */}
       <AnimatePresence>
@@ -147,6 +207,7 @@ function SidePanelRouter() {
 
   return (
     <AnimatePresence>
+      {activePanel === 'import' && <ImportPanel key="import" />}
       {activePanel === 'summary' && <SummaryPanel key="summary" />}
       {activePanel === 'facts' && <FactsPanel key="facts" />}
       {activePanel === 'query' && <QueryPanel key="query" />}

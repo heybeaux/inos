@@ -1,23 +1,26 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import type * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Text, MeshDistortMaterial } from '@react-three/drei';
 import type { InosNode } from '@heybeaux/inos-types';
-import { getNodeColor } from '@/lib/store';
+import { useGraphStore, getNodeColor } from '@/lib/store';
 
 // Node shapes by type
 function NodeShape({
   type,
   color,
   isHovered,
+  isSelected,
 }: {
   type: InosNode['type'];
   color: string;
   isHovered: boolean;
+  isSelected: boolean;
 }) {
-  const scale = isHovered ? 1.3 : 1.0;
+  const scale = isHovered || isSelected ? 1.3 : 1.0;
+  const emissiveIntensity = isSelected ? 1.0 : isHovered ? 0.8 : 0.3;
 
   switch (type) {
     case 'claim':
@@ -27,7 +30,7 @@ function NodeShape({
           <MeshDistortMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={isHovered ? 0.8 : 0.3}
+            emissiveIntensity={emissiveIntensity}
             distort={0.3}
             speed={2}
             transparent
@@ -42,7 +45,7 @@ function NodeShape({
           <MeshDistortMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={isHovered ? 0.8 : 0.3}
+            emissiveIntensity={emissiveIntensity}
             distort={0.2}
             speed={1.5}
             transparent
@@ -57,7 +60,7 @@ function NodeShape({
           <MeshDistortMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={isHovered ? 0.8 : 0.3}
+            emissiveIntensity={emissiveIntensity}
             distort={0.1}
             speed={1}
             transparent
@@ -72,7 +75,7 @@ function NodeShape({
           <MeshDistortMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={isHovered ? 0.8 : 0.3}
+            emissiveIntensity={emissiveIntensity}
             distort={0.15}
             speed={2.5}
             transparent
@@ -87,7 +90,7 @@ function NodeShape({
           <MeshDistortMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={isHovered ? 0.8 : 0.3}
+            emissiveIntensity={emissiveIntensity}
             distort={0.2}
             speed={1.5}
             transparent
@@ -110,6 +113,9 @@ interface Node3DProps {
 export function Node3D({ node, position, isHovered, onHover, onLeave, onClick }: Node3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const color = getNodeColor(node.type);
+  const { setContextMenu, setInlineEditId, selectedNodeId, setSelectedNode } = useGraphStore();
+  const isSelected = selectedNodeId === node.id;
+  const lastClickTime = useRef(0);
 
   // Gentle bobbing animation
   useFrame((state) => {
@@ -120,17 +126,66 @@ export function Node3D({ node, position, isHovered, onHover, onLeave, onClick }:
     }
   });
 
+  // Double-click handler → open inline editor
+  const handleDoubleClick = useCallback(() => {
+    setInlineEditId(node.id);
+  }, [node.id, setInlineEditId]);
+
+  // Right-click handler → open context menu
+  const handleContextMenu = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      // Convert 3D position to screen coordinates for the context menu
+      const canvas = e.nativeEvent?.target as HTMLCanvasElement | undefined;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        setContextMenu({
+          open: true,
+          x: e.nativeEvent?.clientX ?? rect.width / 2,
+          y: e.nativeEvent?.clientY ?? rect.height / 2,
+          nodeId: node.id,
+          mergeMode: false,
+        });
+      }
+    },
+    [node.id, setContextMenu]
+  );
+
+  // Click handler with double-click detection
+  const handleClick = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      const now = Date.now();
+      if (now - lastClickTime.current < 300) {
+        handleDoubleClick();
+        return;
+      }
+      lastClickTime.current = now;
+      setSelectedNode(node.id);
+      onClick();
+    },
+    [onClick, handleDoubleClick, setSelectedNode, node.id]
+  );
+
   return (
     <group ref={groupRef} position={position}>
-      {/* Glow halo */}
+      {/* Glow halo — brighter when selected */}
       <mesh>
-        <sphereGeometry args={[isHovered ? 0.9 : 0.7, 16, 16]} />
+        <sphereGeometry args={[isSelected ? 1.0 : isHovered ? 0.9 : 0.7, 16, 16]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={isHovered ? 0.15 : 0.06}
+          opacity={isSelected ? 0.25 : isHovered ? 0.15 : 0.06}
         />
       </mesh>
+
+      {/* Selection ring */}
+      {isSelected && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.65, 0.02, 8, 32]} />
+          <meshBasicMaterial color={color} transparent opacity={0.6} />
+        </mesh>
+      )}
 
       {/* Main shape */}
       <group
@@ -139,19 +194,17 @@ export function Node3D({ node, position, isHovered, onHover, onLeave, onClick }:
           onHover();
         }}
         onPointerOut={onLeave}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
       >
-        <NodeShape type={node.type} color={color} isHovered={isHovered} />
+        <NodeShape type={node.type} color={color} isHovered={isHovered} isSelected={isSelected} />
       </group>
 
       {/* Label */}
       <Text
         position={[0, -0.9, 0]}
         fontSize={0.22}
-        color={isHovered ? '#ffffff' : 'var(--text-secondary)'}
+        color={isHovered || isSelected ? '#ffffff' : 'var(--text-secondary)'}
         anchorX="center"
         anchorY="middle"
         maxWidth={3}

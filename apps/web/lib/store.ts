@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { InosNode, InosEdge } from '@heybeaux/inos-types';
+import type { InosNode, InosEdge, NodeType, EdgeType, NodeAuthor, InosGraph, CanvasSummary, FactsTable } from '@heybeaux/inos-types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Demo data — will be replaced by API calls later
 const DEMO_NODES: InosNode[] = [
@@ -143,51 +144,138 @@ const DEMO_EDGES: InosEdge[] = [
   },
 ];
 
-type PanelType = 'none' | 'facts' | 'summary' | 'query' | 'timeline' | 'node-detail';
+type PanelType = 'none' | 'facts' | 'summary' | 'query' | 'timeline' | 'node-detail' | 'import';
+
+// Context menu state
+export interface ContextMenuState {
+  open: boolean;
+  x: number;
+  y: number;
+  nodeId: string | null;
+  mergeMode: boolean;
+}
+
+// Command palette node type options
+export const COMMAND_NODE_TYPES: { type: NodeType; label: string; icon: string }[] = [
+  { type: 'claim', label: 'Claim', icon: '●' },
+  { type: 'question', label: 'Question', icon: '◎' },
+  { type: 'fact', label: 'Fact', icon: '■' },
+  { type: 'decision', label: 'Decision', icon: '◆' },
+  { type: 'evidence', label: 'Evidence', icon: '▲' },
+  { type: 'assumption', label: 'Assumption', icon: '◇' },
+];
+
+// Relationship types for command palette
+export const RELATIONSHIP_TYPES: { type: EdgeType; label: string }[] = [
+  { type: 'supports', label: 'Supports' },
+  { type: 'challenges', label: 'Challenges' },
+  { type: 'depends_on', label: 'Depends On' },
+  { type: 'diverges', label: 'Diverges' },
+  { type: 'refines', label: 'Refines' },
+];
+
+// Default author for new nodes
+const DEFAULT_AUTHOR: NodeAuthor = { type: 'human', userId: 'beaux', displayName: 'Beaux' };
 
 interface GraphState {
   nodes: InosNode[];
   edges: InosEdge[];
+  canvasName: string;
+  summary: CanvasSummary | null;
+  factsTable: FactsTable | null;
   focusedNodeId: string | null;
   hoveredNodeId: string | null;
+  selectedNodeId: string | null;
   zoom: number;
   sidebarOpen: boolean;
   activePanel: PanelType;
   selectedNode: InosNode | null;
 
+  // Node creation UI state
+  commandPaletteOpen: boolean;
+  contextMenu: ContextMenuState;
+  inlineEditId: string | null;
+
+  // Canvas toolbar state
+  toolbarPlacementMode: NodeType | null;
+  showFactsPanel: boolean;
+  showSummaryPanel: boolean;
+  showTimelinePanel: boolean;
+
   // Actions
   setNodes: (nodes: InosNode[]) => void;
   setEdges: (edges: InosEdge[]) => void;
+  loadGraph: (graph: InosGraph) => void;
   setFocusedNode: (nodeId: string | null) => void;
   setHoveredNode: (nodeId: string | null) => void;
+  setSelectedNode: (nodeId: string | null) => void;
   setZoom: (zoom: number) => void;
   setSidebarOpen: (open: boolean) => void;
   setActivePanel: (panel: PanelType) => void;
-  setSelectedNode: (node: InosNode | null) => void;
+  setSelectedNodeData: (node: InosNode | null) => void;
   focusNode: (nodeId: string) => void;
   openNodeDetail: (node: InosNode) => void;
   closePanels: () => void;
   loadDemo: () => void;
+
+  // Node CRUD
+  addNode: (node: Partial<InosNode>) => InosNode;
+  editNode: (id: string, updates: Partial<InosNode>) => void;
+  deleteNode: (id: string) => void;
+
+  // Edge CRUD
+  addEdge: (edge: Partial<InosEdge>) => InosEdge;
+
+  // UI state
+  setCommandPaletteOpen: (open: boolean) => void;
+  setContextMenu: (state: Partial<ContextMenuState>) => void;
+  setInlineEditId: (id: string | null) => void;
+  setToolbarPlacementMode: (mode: NodeType | null) => void;
+  togglePanel: (panel: 'facts' | 'summary' | 'timeline') => void;
+
+  // Canvas interaction
+  handleCanvasClick: (screenX: number, screenY: number) => void;
 }
 
-export const useGraphStore = create<GraphState>((set) => ({
+export const useGraphStore = create<GraphState>((set, get) => ({
   nodes: [],
   edges: [],
+  canvasName: 'Inos',
+  summary: null,
+  factsTable: null,
   focusedNodeId: null,
   hoveredNodeId: null,
+  selectedNodeId: null,
   zoom: 1,
   sidebarOpen: false,
   activePanel: 'none',
   selectedNode: null,
 
+  commandPaletteOpen: false,
+  contextMenu: { open: false, x: 0, y: 0, nodeId: null, mergeMode: false },
+  inlineEditId: null,
+  toolbarPlacementMode: null,
+  showFactsPanel: false,
+  showSummaryPanel: false,
+  showTimelinePanel: false,
+
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
+  loadGraph: (graph) =>
+    set({
+      nodes: graph.nodes,
+      edges: graph.edges,
+      canvasName: graph.canvas.name,
+      summary: graph.summary ?? null,
+      factsTable: graph.factsTable ?? null,
+    }),
   setFocusedNode: (focusedNodeId) => set({ focusedNodeId }),
   setHoveredNode: (hoveredNodeId) => set({ hoveredNodeId }),
+  setSelectedNode: (selectedNodeId) => set({ selectedNodeId }),
   setZoom: (zoom) => set({ zoom }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setActivePanel: (activePanel) => set({ activePanel, sidebarOpen: activePanel !== 'none' }),
-  setSelectedNode: (selectedNode) => set({ selectedNode }),
+  setSelectedNodeData: (selectedNode) => set({ selectedNode }),
 
   focusNode: (nodeId) => set({ focusedNodeId: nodeId }),
 
@@ -212,6 +300,102 @@ export const useGraphStore = create<GraphState>((set) => ({
       nodes: DEMO_NODES,
       edges: DEMO_EDGES,
     }),
+
+  // ── Node CRUD ──
+  addNode: (partial) => {
+    const now = new Date().toISOString();
+    const id = partial.id || `node-${uuidv4().slice(0, 8)}`;
+    const node: InosNode = {
+      id,
+      type: partial.type ?? 'claim',
+      title: partial.title ?? 'Untitled',
+      content: partial.content ?? '',
+      author: partial.author ?? DEFAULT_AUTHOR,
+      createdAt: partial.createdAt ?? now,
+      updatedAt: now,
+      visits: partial.visits ?? [],
+      dependsOn: partial.dependsOn ?? [],
+      staleness: partial.staleness ?? { state: 'fresh', evaluatedAt: now, cascadeDepth: 0 },
+      canvasId: partial.canvasId ?? 'demo-canvas',
+      status: partial.status ?? 'fresh',
+      tags: partial.tags ?? [],
+      schemaVersion: partial.schemaVersion ?? '1.0.0',
+    };
+    set((state) => ({ nodes: [...state.nodes, node] }));
+    return node;
+  },
+
+  editNode: (id, updates) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) =>
+        n.id === id
+          ? { ...n, ...updates, updatedAt: new Date().toISOString() }
+          : n
+      ),
+    })),
+
+  deleteNode: (id) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) =>
+        n.id === id
+          ? { ...n, status: 'orphaned' as const, updatedAt: new Date().toISOString() }
+          : n
+      ),
+      edges: state.edges.filter((e) => e.sourceId !== id && e.targetId !== id),
+    })),
+
+  // ── Edge CRUD ──
+  addEdge: (partial) => {
+    const now = new Date().toISOString();
+    const id = partial.id || `edge-${uuidv4().slice(0, 8)}`;
+    const edge: InosEdge = {
+      id,
+      type: partial.type ?? 'supports',
+      sourceId: partial.sourceId ?? '',
+      targetId: partial.targetId ?? '',
+      label: partial.label,
+      createdAt: partial.createdAt ?? now,
+      author: partial.author ?? DEFAULT_AUTHOR,
+      canvasId: partial.canvasId ?? 'demo-canvas',
+      schemaVersion: partial.schemaVersion ?? '1.0.0',
+    };
+    set((state) => ({ edges: [...state.edges, edge] }));
+    return edge;
+  },
+
+  // ── UI State ──
+  setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
+
+  setContextMenu: (partial) =>
+    set((state) => ({
+      contextMenu: { ...state.contextMenu, ...partial },
+    })),
+
+  setInlineEditId: (inlineEditId) => set({ inlineEditId }),
+
+  setToolbarPlacementMode: (toolbarPlacementMode) => set({ toolbarPlacementMode }),
+
+  togglePanel: (panel) =>
+    set((state) => {
+      const key = `show${panel.charAt(0).toUpperCase()}${panel.slice(1)}Panel` as
+        | 'showFactsPanel'
+        | 'showSummaryPanel'
+        | 'showTimelinePanel';
+      return { [key]: !state[key] };
+    }),
+
+  // ── Canvas Interaction ──
+  handleCanvasClick: (screenX: number, screenY: number) => {
+    const { toolbarPlacementMode, addNode } = get();
+    if (toolbarPlacementMode) {
+      addNode({
+        type: toolbarPlacementMode,
+        title: `New ${toolbarPlacementMode}`,
+        content: '',
+      });
+      set({ toolbarPlacementMode: null });
+    }
+  },
 }));
 
 // Helper: get node color by type
@@ -248,4 +432,9 @@ export function getEdgeColor(type: InosEdge['type']): string {
     inherits: '#7b2ff7',
   };
   return colors[type] ?? '#94a3b8';
+}
+
+// Helper: get human-readable label for node type
+export function getNodeTypeLabel(type: NodeType): string {
+  return COMMAND_NODE_TYPES.find((t) => t.type === type)?.label ?? type;
 }
