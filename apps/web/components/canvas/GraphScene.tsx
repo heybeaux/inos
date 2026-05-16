@@ -13,11 +13,11 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
 
     const nodeMap = new Map<string, [number, number, number]>();
 
-    // Initial random positions on a sphere
+    // Initial random positions — scale sphere with node count
+    const r = Math.max(5, Math.sqrt(nodes.length) * 1.5);
     for (const node of nodes) {
       const phi = Math.acos(2 * Math.random() - 1);
       const theta = Math.random() * Math.PI * 2;
-      const r = 5;
       nodeMap.set(node.id, [
         r * Math.sin(phi) * Math.cos(theta),
         r * Math.sin(phi) * Math.sin(theta),

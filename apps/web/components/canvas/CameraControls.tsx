@@ -8,13 +8,11 @@ export function CameraControls() {
       enableDamping
       dampingFactor={0.05}
       minDistance={3}
-      maxDistance={40}
+      maxDistance={60}
       enablePan={true}
       panSpeed={0.5}
       zoomSpeed={0.8}
       rotateSpeed={0.5}
-      autoRotate
-      autoRotateSpeed={0.3}
       makeDefault
     />
   );

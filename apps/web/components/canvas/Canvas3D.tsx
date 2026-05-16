@@ -38,7 +38,7 @@ function AmbientParticles() {
 export default function Canvas3D() {
   return (
     <Canvas
-      camera={{ position: [0, 0, 15], fov: 60, near: 0.1, far: 100 }}
+      camera={{ position: [0, 0, 30], fov: 60, near: 0.1, far: 200 }}
       style={{ width: '100%', height: '100%', display: 'block' }}
       gl={{
         antialias: true,
