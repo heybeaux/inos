@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 
 export function SummaryPanel() {
-  const { nodes, edges, activePanel, setActivePanel } = useGraphStore();
+  const { nodes, edges, summary, activePanel, setActivePanel } = useGraphStore();
 
   const stats = {
     totalNodes: nodes.length,
@@ -14,6 +14,7 @@ export function SummaryPanel() {
     facts: nodes.filter((n) => n.type === 'fact').length,
     questions: nodes.filter((n) => n.type === 'question').length,
     decisions: nodes.filter((n) => n.type === 'decision').length,
+    branches: nodes.filter((n) => n.type === 'branch').length,
     totalEdges: edges.length,
   };
 
@@ -39,15 +40,28 @@ export function SummaryPanel() {
         </button>
       </div>
 
-      <Card className="mb-4">
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-          Overview
-        </h3>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-          This canvas explores the hypothesis that oceanic environments are the cradle of all life,
-          supported by evidence from hydrothermal vents and chemosynthetic ecosystems.
-        </p>
-      </Card>
+      {/* AI-generated summary */}
+      {summary && (
+        <Card className="mb-4">
+          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
+            Overview
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+            {summary.proseSummary}
+          </p>
+        </Card>
+      )}
+
+      {!summary && (
+        <Card className="mb-4">
+          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
+            Overview
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            No summary generated yet. Add nodes to get an auto-summary.
+          </p>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
@@ -74,6 +88,12 @@ export function SummaryPanel() {
             <span style={{ color: 'var(--text-muted)' }}>Decisions</span>
             <Badge label={String(stats.decisions)} color="#7b2ff7" />
           </div>
+          {stats.branches > 0 && (
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-muted)' }}>Branches</span>
+              <Badge label={String(stats.branches)} color="#fee440" />
+            </div>
+          )}
           <div className="flex justify-between text-sm pt-2 border-t" style={{ borderColor: 'var(--surface-glass-border)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Connections</span>
             <span style={{ color: 'var(--bio-cyan)' }}>{stats.totalEdges}</span>
@@ -94,6 +114,9 @@ export function SummaryPanel() {
           )}
           {nodes.filter((n) => n.status === 'negated').length > 0 && (
             <Badge label={`${nodes.filter((n) => n.status === 'negated').length} Negated`} color="#ff6b6b" />
+          )}
+          {nodes.filter((n) => n.status === 'orphaned').length > 0 && (
+            <Badge label={`${nodes.filter((n) => n.status === 'orphaned').length} Orphaned`} color="#ff6b6b" />
           )}
         </div>
       </Card>

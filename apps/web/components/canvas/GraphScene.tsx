@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo } from 'react';
 import { useGraphStore } from '@/lib/store';
 import type { InosNode, InosEdge } from '@heybeaux/inos-types';
 import { Node3D } from './Node3D';
@@ -35,7 +34,7 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
     }
 
     // Run force simulation
-    const iterations = 80;
+    const iterations = 300;
     const ids = nodes.map((n) => n.id);
 
     for (let iter = 0; iter < iterations; iter++) {
@@ -105,14 +104,9 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
 export function GraphScene() {
   const { nodes, edges, hoveredNodeId, setHoveredNode, openNodeDetail } = useGraphStore();
   const positions = useForceLayout(nodes, edges);
-  const [time, setTime] = useState(0);
-
-  useFrame((_state, delta) => {
-    setTime((t) => t + delta * 0.1);
-  });
 
   return (
-    <group rotation={[0, time, 0]}>
+    <group>
       {nodes.map((node) => {
         const pos = positions.get(node.id) ?? [0, 0, 0];
         const isHovered = hoveredNodeId === node.id;

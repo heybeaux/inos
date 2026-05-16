@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 type InputFormat = 'auto' | 'slack' | 'email' | 'meeting' | 'raw';
 
 export function ImportPanel() {
-  const { setNodes, setEdges } = useGraphStore();
+  const { loadGraph, setActivePanel } = useGraphStore();
   const [text, setText] = useState('');
   const [format, setFormat] = useState<InputFormat>('auto');
   const [topic, setTopic] = useState('');
@@ -40,9 +40,9 @@ export function ImportPanel() {
         topic || undefined
       );
 
-      setNodes(result.graph.nodes);
-      setEdges(result.graph.edges);
       setStats(result.stats);
+      loadGraph(result.graph);
+      setActivePanel('none'); // close panel after successful import
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(`Ingestion failed: ${message}`);

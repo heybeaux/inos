@@ -32,7 +32,7 @@ const Canvas3D = dynamic(() => import('@/components/canvas/Canvas3D'), {
 
 // Top bar with canvas name and controls
 function TopBar() {
-  const { activePanel, setActivePanel, closePanels, setCommandPaletteOpen } = useGraphStore();
+  const { activePanel, setActivePanel, closePanels, setCommandPaletteOpen, canvasName } = useGraphStore();
 
   return (
     <motion.div
@@ -54,7 +54,7 @@ function TopBar() {
             border: '1px solid var(--surface-glass-border)',
           }}
         >
-          Origin of Life
+          {canvasName}
         </span>
       </div>
 

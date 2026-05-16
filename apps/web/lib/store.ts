@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { InosNode, InosEdge, NodeType, EdgeType, NodeAuthor, InosGraph, CanvasSummary, FactsTable } from '@heybeaux/inos-types';
 import { v4 as uuidv4 } from 'uuid';
+import { generateDemoGraph } from '@/lib/demo-data';
 
 // Demo data — will be replaced by API calls later
 const DEMO_NODES: InosNode[] = [
@@ -295,11 +296,16 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       focusedNodeId: null,
     }),
 
-  loadDemo: () =>
+  loadDemo: () => {
+    const graph = generateDemoGraph();
     set({
-      nodes: DEMO_NODES,
-      edges: DEMO_EDGES,
-    }),
+      nodes: graph.nodes,
+      edges: graph.edges,
+      canvasName: graph.canvas.name,
+      summary: graph.summary ?? null,
+      factsTable: graph.factsTable ?? null,
+    });
+  },
 
   // ── Node CRUD ──
   addNode: (partial) => {
