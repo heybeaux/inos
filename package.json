@@ -1,0 +1,15 @@
+{
+  "name": "inos",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "pnpm": "^9.1.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.2"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@heybeaux/inos-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@heybeaux/inos-types": "workspace:*",
+    "fast-levenshtein": "^3.0.0",
+    "graphology": "^0.25.4"
+  },
+  "devDependencies": {
+    "@types/fast-levenshtein": "^0.0.4",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
