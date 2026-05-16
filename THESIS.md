@@ -162,6 +162,36 @@ Inosculate   → how humans and agents THINK TOGETHER
 
 Inos is the **interface layer** — the thing that makes the entire Ginnung stack navigable by humans who don't want to read debate transcripts or JSON state contracts. It's the canvas where everything comes together.
 
+### The Bigger Positioning
+
+Inos isn't just a reasoning tool. It's **cognitive infrastructure**.
+
+> *"Slack organized our messages. Notion organized our docs. Inos organizes our thinking."*
+
+Category creator. Not a meeting tool, not a doc tool, not a chat tool. The layer that captures the structure of *how we reason* — not just the output.
+
+### Team Collaboration
+
+The team dimension is where Inos goes supernova:
+
+| Scenario | Value |
+|----------|-------|
+| **Cross-team alignment** | Engineering and product debating a feature, every trade-off visible, not buried in Slack |
+| **Async across timezones** | Structured branches instead of fragmented threads across channels |
+| **Onboarding** | New hire opens the graph and *sees* how decisions evolved, not just what was decided |
+| **Conflict resolution** | Disagreements are structured: belief + evidence + what would change my mind |
+| **AI as mediator** | Parliament neurotypes surface blind spots, pull precedent from Engram |
+
+### Use Modes
+
+| Mode | Participants | Example |
+|------|-------------|-------|
+| **Human-Human** | Team members debating | Product strategy, architecture decisions, conflict resolution |
+| **Human-AI** | Individual + AI assistant | Personal reasoning, learning, exploring options |
+| **AI-AI** | Multiple agents | Parliament deliberation as nodes, agents collaborating on a problem |
+| **Human-AI-AI** | Mixed | Human directs, agents debate, human synthesizes |
+| **Human-Human-AI** | Team + AI facilitator | Team collaboration with AI mediation and blind spot detection |
+
 ### Relationship to Parliament
 
 Parliament and Inos are complementary but fundamentally different:
@@ -199,6 +229,44 @@ Human reasoning + AI reasoning, grafted together. They don't just communicate �
 | **Inosculate** | Latin (inosculor, "to kiss") | Two systems uniting by growth |
 
 The naming holds.
+
+---
+
+## Killer Features
+
+### 1. Transcript Ingestion → Graph
+
+Dump a Zoom transcript, Slack thread, or email chain — get back a **reasoning graph** automatically.
+
+- LLM extracts claims, decisions, objections, evidence, questions
+- Structures them into nodes with typed edges
+- Maps disagreements, unresolved threads, implicit assumptions
+- Instant value: people *see* what they actually talked about vs. what they thought they talked about
+- **This is the Trojan Horse.** Nobody wants to manually structure their thinking. They just want the mess made sense of.
+
+### 2. Natural Language Canvas Queries
+
+Ask the canvas questions in plain English:
+
+- *"Show me every objection we had to option B."*
+- *"What assumptions are we making about timeline?"*
+- *"Who raised the budget concern and when?"*
+- *"What evidence supports the pricing model decision?"*
+
+No Ctrl+F through a 47-message thread. The canvas *knows* because everything is structured. Engram provides the episodic memory layer for retrieval.
+
+### 3. LLM Zoom-Out Assessment
+
+Step back from the graph and let a model (or Parliament) assess the **entire canvas at once**:
+
+- *"You've debated implementation details for 40 nodes but haven't agreed on the core problem."*
+- *"All three branches assume the same constraint, but it was never verified."*
+- *"Trevan challenged the timeline on March 12 and nobody responded."*
+- *"You have 8 nodes about pricing strategy but no node about pricing model."*
+
+The LLM isn't participating in the thinking. It's **thinking about the thinking** — like a facilitator who's been quietly taking notes and finally speaks up.
+
+This is the **meta-reasoning layer**. It works for solo thinking and team collaboration equally.
 
 ---
 
