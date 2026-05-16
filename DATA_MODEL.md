@@ -758,12 +758,12 @@ The cascade is synchronous for small graphs (<1000 nodes) and can be batched for
 
 ## Open Questions
 
-1. **Canvas summary regeneration trigger** — what counts as "significant" enough to regenerate? Any new node, or threshold-based (e.g., every 5 changes)?
-2. **Facts table dedup strategy** — LLM-based matching, title similarity (edit distance), or explicit user grouping?
-3. **Primary branch selection** — most recent activity, most nodes, or configurable (user picks which branch is "primary")?
-4. **Fact disputations** — when two sources disagree, do we show both values equally, or weight by source credibility/verification status?
-5. **Summary storage** — store as a field on the Canvas, or as a separate node type that's generated on demand?
-6. **Facts table UI** — sidebar, overlay, or dedicated view? Or all three with different density?
+1. **Canvas summary regeneration trigger → hybrid with debounce.** Always queue a regeneration but debounce — batch changes within 30s into one summary. Fire immediately for high-signal events (new branch, resolved decision, fact cascade). Low-signal changes (tag, visit) are debounced.
+2. **Facts table dedup strategy → hybrid.** Edit distance for obvious duplicates (>90% similarity = auto-merge). LLM for borderline cases (70-90% = "are these the same?"). Below 70% = separate. User can always override.
+3. **Primary branch selection → hybrid.** Auto-pick based on recent meaningful activity (new node/edge, not just tag change). User can pin a different branch as primary — pin overrides auto-selection.
+4. **Fact disputation weighting → weighted by verification status, not by author.** Lattice-verified fact > unverified claim. Both values always visible — show the weighting, don't hide the minority view. UI: "1000/min ✓ verified" vs "100/min (unverified, 3 nodes depend)."
+5. **Summary storage → Canvas field for current, temporal index for history.** Current summary always on canvas object. Old versions go into the temporal index as snapshots. Browse historical summaries without cluttering the active graph.
+6. **Facts table UI → all three, progressive disclosure.** Collapsed sidebar icon → slide-open sidebar → pin to stay open → expand to full-screen dedicated view with filtering, sorting, dependency graphs. Glance → explore → analyze.
 
 ---
 
