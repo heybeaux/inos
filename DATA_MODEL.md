@@ -252,6 +252,18 @@ export interface Canvas {
    * Schema version.
    */
   schemaVersion: string;
+
+  /**
+   * Cached canvas summary. Regenerated automatically on significant
+   * canvas changes. Present when at least one LLM summary has run.
+   */
+  summary?: CanvasSummary;
+
+  /**
+   * Cached facts table. Rebuilt when fact-type nodes are added,
+   * updated, or deduplicated.
+   */
+  factsTable?: FactsTable;
 }
 ```
 
@@ -389,6 +401,260 @@ export interface SonderSignature {
 | Prediction protocol | Stored as metadata on nodes (what was predicted vs. what happened) |
 | Workflow state | Canvas-level metadata |
 
+## Canvas Summary
+
+The canvas summary is a **living dashboard** — a scannable overview of the canvas's current state. Users shouldn't have to explore the graph to understand what's going on. The summary surfaces the shape at a glance.
+
+```typescript
+export interface CanvasSummary {
+  /** Canvas ID this summary describes. */
+  canvasId: string;
+
+  /** Generated from Canvas.name. */
+  name: string;
+
+  /** Generated from Canvas.description. */
+  description?: string;
+
+  /** ISO 8601 creation time. */
+  createdAt: string;
+
+  /** ISO 8601 of last modification. */
+  updatedAt: string;
+
+  /**
+   * LLM-generated prose summary of the canvas.
+   * "This canvas explores whether to migrate from PostgreSQL to Supabase.
+   * Three branches exist: (1) full migration, (2) hybrid approach, (3) stay put.
+   * The hybrid branch is currently most active. Two key assumptions remain
+   * unresolved..."
+   *
+   * Regenerated on significant canvas changes (new branch, resolved decision,
+   * fact cascade). Cached between regenerations.
+   */
+  proseSummary: string;
+
+  /**
+   * Active branches — top-level divergent paths from the root topic.
+   * Each entry includes the branch root node ID, a short title,
+   * current status, and activity level.
+   */
+  activeBranches: BranchSummary[];
+
+  /**
+   * The primary branch — the branch with the most recent activity
+   * or the most nodes, depending on configuration. This is the
+   * "current" line of thought.
+   */
+  primaryBranchId?: string;  // node ID (branch-type)
+
+  /**
+   * Pending assumptions — assumption-type nodes that haven't been
+   * resolved (validated or rejected). These are open questions that
+   * decisions depend on.
+   */
+  pendingAssumptions: PendingAssumption[];
+
+  /**
+   * Recent decisions — the last N decision-type nodes, with their
+   * rationale summarized. Gives a quick sense of what's been decided.
+   */
+  recentDecisions: DecisionSummary[];
+
+  /**
+   * Active challenges — claim/decision nodes that have unresolved
+   * challenge edges pointing at them. These are live disagreements.
+   */
+  activeChallenges: ChallengeSummary[];
+
+  /**
+   * Stale/negated nodes count. Quick health indicator.
+   */
+  healthMetrics: {
+    freshNodes: number;
+    matureNodes: number;
+    staleNodes: number;
+    negatedNodes: number;
+    orphanedNodes: number;
+  };
+
+  /**
+   * Participant list — who has contributed to this canvas.
+   */
+  participants: NodeAuthor[];
+
+  /**
+   * Total node and edge counts.
+   */
+  stats: {
+    totalNodes: number;
+    totalEdges: number;
+    factCount: number;
+    decisionCount: number;
+    questionCount: number;
+  };
+
+  /**
+   * When the summary was last regenerated.
+   */
+  lastGeneratedAt: string;
+}
+
+export interface BranchSummary {
+  /** The branch root node ID. */
+  nodeId: string;
+  /** Auto-generated or user-provided title. */
+  title: string;
+  /** Number of nodes in this branch (including descendants). */
+  nodeCount: number;
+  /** Status of the branch. */
+  status: 'active' | 'resolved' | 'abandoned' | 'merged';
+  /** How recently this branch was active. */
+  lastActivityAt: string;
+  /** Short summary of what this branch explores. */
+  summary?: string;
+}
+
+export interface PendingAssumption {
+  /** The assumption node ID. */
+  nodeId: string;
+  /** The assumption's description/content. */
+  description: string;
+  /** Risk level from the assumption. */
+  riskLevel: 'low' | 'medium' | 'high';
+  /** Which decision nodes depend on this assumption. */
+  dependedOnBy: string[];  // decision node IDs
+}
+
+export interface DecisionSummary {
+  /** The decision node ID. */
+  nodeId: string;
+  /** Short title. */
+  title: string;
+  /** One-line rationale. */
+  rationale: string;
+  /** When decided. */
+  decidedAt: string;
+}
+
+export interface ChallengeSummary {
+  /** The node being challenged. */
+  targetNodeId: string;
+  /** The node doing the challenging. */
+  challengerNodeId: string;
+  /** Short description of the challenge. */
+  description: string;
+  /** Whether the challenge has been addressed. */
+  addressed: boolean;
+}
+```
+
+The summary is **regenerated automatically** by an LLM (or Parliament) when:
+- A new branch is created
+- A decision is resolved
+- A fact cascade triggers
+- The canvas is opened after a period of inactivity
+
+It can also be **regenerated on demand** — "summarize where we are."
+
+---
+
+## Facts Table
+
+The facts table is a **deduplicated, canonical view of all facts** on the canvas. Instead of clicking through 100 nodes to find out what the current API rate limit is, you open the facts panel and see it instantly.
+
+```typescript
+export interface FactsTable {
+  /** Canvas ID this table belongs to. */
+  canvasId: string;
+
+  /**
+   * Canonical facts, keyed by their stable fact key.
+   * Each entry represents the current believed value.
+   */
+  facts: Record<string, FactEntry>;
+
+  /** When this table was last rebuilt. */
+  lastRebuiltAt: string;
+}
+
+export interface FactEntry {
+  /** The stable fact key (e.g., "api_rate_limit"). */
+  key: string;
+
+  /** Human-readable label (e.g., "API Rate Limit"). */
+  label: string;
+
+  /** The current believed value. */
+  value: unknown;
+
+  /** Optional unit (e.g., "requests/minute", "USD"). */
+  unit?: string;
+
+  /** Staleness state of this fact. */
+  staleness: 'current' | 'stale' | 'disputed';
+
+  /**
+   * Source node IDs — which fact-type nodes support this value.
+   * Multiple sources = agreement. Conflicting sources = disputed.
+   */
+  sources: string[];  // fact-type node IDs
+
+  /**
+   * If disputed: which nodes disagree and what values they propose.
+   */
+  conflicts?: {
+    nodeId: string;
+    proposedValue: unknown;
+    rationale?: string;
+  }[];
+
+  /**
+   * Which nodes depend on this fact.
+   * Used for cascade visualization from the facts panel.
+   */
+  dependedOnBy: string[];  // node IDs
+
+  /** When this fact was last updated. */
+  updatedAt: string;
+
+  /** Who last updated it. */
+  updatedBy: NodeAuthor;
+}
+```
+
+### How the Facts Table Works
+
+1. **Built from fact-type nodes.** The table aggregates all nodes of type `'fact'` on the canvas.
+2. **Deduplication.** Nodes describing the same fact (detected by title similarity, LLM matching, or explicit `factKey` assignment) are merged into one entry with multiple sources.
+3. **Conflict detection.** If two sources propose different values, the fact is marked `'disputed'` and the conflicts array shows the competing values.
+4. **Cascade awareness.** The `dependedOnBy` array shows every node that depends on this fact — click to see what breaks if the fact changes.
+5. **Visual priority.** Facts with many dependents or disputed status are surfaced at the top. Fresh facts pulse. Stale facts dim.
+
+### Facts Table UI
+
+The facts panel is a **sidebar or overlay** — always accessible from any canvas view:
+
+```
+┌─────────────────────────────────────┐
+│  FACTS (14)              [+ Add]   │
+├─────────────────────────────────────┤
+│ 🔴 API Rate Limit     DISPUTED     │
+│    100/min vs 1000/min (2 sources) │
+│    → 7 nodes depend on this        │
+│                                    │
+│ 🟢 Budget              $50k/mo     │
+│    1 source, 3 dependents          │
+│                                    │
+│ 🟡 Launch Date         Jun 1       │
+│    2 sources, 5 dependents         │
+│    Updated 2h ago by Trevan        │
+│                                    │
+│ 🟢 Team Size           6 people    │
+│    1 source, 2 dependents          │
+└─────────────────────────────────────┘
+```
+
 ---
 
 ## Graph Serialization Format
@@ -421,6 +687,18 @@ export interface InosGraph {
    * for fast dependency resolution and cascade computation.
    */
   factRegistry: Record<string, string[]>;  // fact key → node IDs
+
+  /**
+   * Canvas summary — the living dashboard.
+   * Optional: can be regenerated on demand.
+   */
+  summary?: CanvasSummary;
+
+  /**
+   * Facts table — deduplicated canonical facts.
+   * Optional: can be rebuilt on demand.
+   */
+  factsTable?: FactsTable;
 }
 
 export interface TemporalSnapshot {
@@ -469,15 +747,23 @@ The cascade is synchronous for small graphs (<1000 nodes) and can be batched for
 
 ---
 
+## Resolved Decisions
+
+1. **Node content → discriminated union.** Type-safe, compiler catches mistakes, IDE autocomplete. Custom node types can use `contentSchema` field later.
+2. **Real-time collab → CRDT (Yjs).** Conflict-free by design, works offline, mature ecosystem. Graph size makes overhead negligible.
+3. **Fact key generation → composite key from title + type + author.** Stable identifier independent of value. LLM-generated `factKey` for imported content.
+4. **Snapshot frequency → every change, differential.** Perfect temporal resolution, storage is cheap, core to the product. Can compress old snapshots later.
+5. **Cross-canvas references → via 'references' edges only.** Nodes belong to one canvas; edges link across canvases. Like hyperlinks.
+6. **Deletion → soft delete (tombstone) always.** Nothing is lost. Tombstones are invisible in active view but queryable, recoverable, and visible to cascade engine.
+
 ## Open Questions
 
-1. **Node content union** — should content be a discriminated union type per node kind, or a flexible `Record<string, unknown>` with a schema per type?
-2. **CRDT vs. operational transforms** — for real-time collaboration, which conflict-free replication strategy?
-3. **Fact key generation** — how do we derive a stable key from a fact node's content for the fact registry?
-4. **Snapshot frequency** — do we snapshot on every change, or batch temporally?
-5. **Cross-canvas references** — should nodes reference nodes in other canvases, or is that always an edge of type 'references'?
-6. **Node size limits** — max content size? Max edges per node?
-7. **Deletion policy** — hard delete vs. soft delete (tombstone)? Given the "nothing is lost" philosophy, probably soft.
+1. **Canvas summary regeneration trigger** — what counts as "significant" enough to regenerate? Any new node, or threshold-based (e.g., every 5 changes)?
+2. **Facts table dedup strategy** — LLM-based matching, title similarity (edit distance), or explicit user grouping?
+3. **Primary branch selection** — most recent activity, most nodes, or configurable (user picks which branch is "primary")?
+4. **Fact disputations** — when two sources disagree, do we show both values equally, or weight by source credibility/verification status?
+5. **Summary storage** — store as a field on the Canvas, or as a separate node type that's generated on demand?
+6. **Facts table UI** — sidebar, overlay, or dedicated view? Or all three with different density?
 
 ---
 
