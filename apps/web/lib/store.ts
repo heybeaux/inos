@@ -3,151 +3,8 @@ import type { InosNode, InosEdge, NodeType, EdgeType, NodeAuthor, InosGraph, Can
 import { v4 as uuidv4 } from 'uuid';
 import { generateDemoGraph } from '@/lib/demo-data';
 
-// Demo data — will be replaced by API calls later
-const DEMO_NODES: InosNode[] = [
-  {
-    id: 'node-1',
-    type: 'claim',
-    title: 'The ocean is the origin of life',
-    content: 'All known life on Earth traces its evolutionary lineage back to marine organisms.',
-    author: { type: 'human', userId: 'beaux', displayName: 'Beaux' },
-    createdAt: '2026-05-16T10:00:00Z',
-    updatedAt: '2026-05-16T10:00:00Z',
-    visits: [],
-    dependsOn: [],
-    staleness: { state: 'fresh', evaluatedAt: '2026-05-16T10:00:00Z', cascadeDepth: 0 },
-    canvasId: 'demo-canvas',
-    status: 'fresh',
-    tags: ['biology', 'origins'],
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'node-2',
-    type: 'fact',
-    title: 'Hydrothermal vents discovered in 1977',
-    content: { source: 'NOAA', excerpt: 'Deep-sea hydrothermal vent ecosystems host chemosynthetic life.', url: 'https://oceanexplorer.noaa.gov' },
-    author: { type: 'system', source: 'imported' },
-    createdAt: '2026-05-16T10:05:00Z',
-    updatedAt: '2026-05-16T10:05:00Z',
-    visits: [],
-    dependsOn: ['node-1'],
-    staleness: { state: 'fresh', evaluatedAt: '2026-05-16T10:05:00Z', cascadeDepth: 0 },
-    canvasId: 'demo-canvas',
-    status: 'fresh',
-    tags: ['geology', 'discovery'],
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'node-3',
-    type: 'question',
-    title: 'Could life exist without water?',
-    content: 'Are there alternative solvents that could support biochemistry?',
-    author: { type: 'human', userId: 'beaux', displayName: 'Beaux' },
-    createdAt: '2026-05-16T10:10:00Z',
-    updatedAt: '2026-05-16T10:10:00Z',
-    visits: [],
-    dependsOn: ['node-1'],
-    staleness: { state: 'fresh', evaluatedAt: '2026-05-16T10:10:00Z', cascadeDepth: 0 },
-    canvasId: 'demo-canvas',
-    status: 'fresh',
-    tags: ['astrobiology', 'speculation'],
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'node-4',
-    type: 'decision',
-    title: 'Focus on Earth-origin hypothesis',
-    content: 'We will ground all arguments in terrestrial biology before expanding to exobiology.',
-    author: { type: 'human', userId: 'beaux', displayName: 'Beaux' },
-    createdAt: '2026-05-16T10:15:00Z',
-    updatedAt: '2026-05-16T10:15:00Z',
-    visits: [],
-    dependsOn: ['node-3'],
-    staleness: { state: 'fresh', evaluatedAt: '2026-05-16T10:15:00Z', cascadeDepth: 0 },
-    canvasId: 'demo-canvas',
-    status: 'fresh',
-    tags: ['methodology'],
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'node-5',
-    type: 'claim',
-    title: 'Chemosynthesis predates photosynthesis',
-    content: 'The earliest metabolic pathways were chemosynthetic, using inorganic compounds from vents.',
-    author: { type: 'agent', agentId: 'inos-researcher', model: 'kilocode/qwen/qwen3.6-plus' },
-    createdAt: '2026-05-16T10:20:00Z',
-    updatedAt: '2026-05-16T10:20:00Z',
-    visits: [],
-    dependsOn: ['node-2'],
-    staleness: { state: 'fresh', evaluatedAt: '2026-05-16T10:20:00Z', cascadeDepth: 0 },
-    canvasId: 'demo-canvas',
-    status: 'fresh',
-    tags: ['evolution', 'metabolism'],
-    schemaVersion: '1.0.0',
-  },
-];
+type PanelType = 'none' | 'facts' | 'summary' | 'query' | 'timeline' | 'node-detail' | 'import' | 'create';
 
-const DEMO_EDGES: InosEdge[] = [
-  {
-    id: 'edge-1',
-    type: 'supports',
-    sourceId: 'node-2',
-    targetId: 'node-1',
-    label: 'evidence for',
-    createdAt: '2026-05-16T10:05:00Z',
-    author: { type: 'system', source: 'imported' },
-    canvasId: 'demo-canvas',
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'edge-2',
-    type: 'diverges',
-    sourceId: 'node-3',
-    targetId: 'node-1',
-    label: 'challenges scope of',
-    createdAt: '2026-05-16T10:10:00Z',
-    author: { type: 'human', userId: 'beaux', displayName: 'Beaux' },
-    canvasId: 'demo-canvas',
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'edge-3',
-    type: 'refines',
-    sourceId: 'node-4',
-    targetId: 'node-3',
-    label: 'narrows to',
-    createdAt: '2026-05-16T10:15:00Z',
-    author: { type: 'human', userId: 'beaux', displayName: 'Beaux' },
-    canvasId: 'demo-canvas',
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'edge-4',
-    type: 'supports',
-    sourceId: 'node-5',
-    targetId: 'node-1',
-    label: 'strengthens claim',
-    createdAt: '2026-05-16T10:20:00Z',
-    author: { type: 'agent', agentId: 'inos-researcher', model: 'kilocode/qwen/qwen3.6-plus' },
-    canvasId: 'demo-canvas',
-    schemaVersion: '1.0.0',
-  },
-  {
-    id: 'edge-5',
-    type: 'depends_on',
-    sourceId: 'node-5',
-    targetId: 'node-2',
-    label: 'builds on fact',
-    createdAt: '2026-05-16T10:20:00Z',
-    author: { type: 'agent', agentId: 'inos-researcher', model: 'kilocode/qwen/qwen3.6-plus' },
-    canvasId: 'demo-canvas',
-    schemaVersion: '1.0.0',
-  },
-];
-
-type PanelType = 'none' | 'facts' | 'summary' | 'query' | 'timeline' | 'node-detail' | 'import';
-
-// Context menu state
 export interface ContextMenuState {
   open: boolean;
   x: number;
@@ -156,7 +13,6 @@ export interface ContextMenuState {
   mergeMode: boolean;
 }
 
-// Command palette node type options
 export const COMMAND_NODE_TYPES: { type: NodeType; label: string; icon: string }[] = [
   { type: 'claim', label: 'Claim', icon: '●' },
   { type: 'question', label: 'Question', icon: '◎' },
@@ -166,7 +22,6 @@ export const COMMAND_NODE_TYPES: { type: NodeType; label: string; icon: string }
   { type: 'assumption', label: 'Assumption', icon: '◇' },
 ];
 
-// Relationship types for command palette
 export const RELATIONSHIP_TYPES: { type: EdgeType; label: string }[] = [
   { type: 'supports', label: 'Supports' },
   { type: 'challenges', label: 'Challenges' },
@@ -175,7 +30,6 @@ export const RELATIONSHIP_TYPES: { type: EdgeType; label: string }[] = [
   { type: 'refines', label: 'Refines' },
 ];
 
-// Default author for new nodes
 const DEFAULT_AUTHOR: NodeAuthor = { type: 'human', userId: 'beaux', displayName: 'Beaux' };
 
 interface GraphState {
@@ -191,19 +45,16 @@ interface GraphState {
   sidebarOpen: boolean;
   activePanel: PanelType;
   selectedNode: InosNode | null;
-
-  // Node creation UI state
+  timelineProgress: number;
+  visibleNodeIds: Set<string> | null;
   commandPaletteOpen: boolean;
   contextMenu: ContextMenuState;
   inlineEditId: string | null;
-
-  // Canvas toolbar state
   toolbarPlacementMode: NodeType | null;
   showFactsPanel: boolean;
   showSummaryPanel: boolean;
   showTimelinePanel: boolean;
 
-  // Actions
   setNodes: (nodes: InosNode[]) => void;
   setEdges: (edges: InosEdge[]) => void;
   loadGraph: (graph: InosGraph) => void;
@@ -218,24 +69,24 @@ interface GraphState {
   openNodeDetail: (node: InosNode) => void;
   closePanels: () => void;
   loadDemo: () => void;
-
-  // Node CRUD
+  setTimelineProgress: (progress: number) => void;
   addNode: (node: Partial<InosNode>) => InosNode;
   editNode: (id: string, updates: Partial<InosNode>) => void;
   deleteNode: (id: string) => void;
-
-  // Edge CRUD
   addEdge: (edge: Partial<InosEdge>) => InosEdge;
-
-  // UI state
   setCommandPaletteOpen: (open: boolean) => void;
   setContextMenu: (state: Partial<ContextMenuState>) => void;
   setInlineEditId: (id: string | null) => void;
   setToolbarPlacementMode: (mode: NodeType | null) => void;
   togglePanel: (panel: 'facts' | 'summary' | 'timeline') => void;
-
-  // Canvas interaction
   handleCanvasClick: (screenX: number, screenY: number) => void;
+}
+
+function computeVisible(nodes: InosNode[], progress: number): Set<string> | null {
+  if (progress >= 100 || nodes.length === 0) return null;
+  const ts = nodes.map((n) => new Date(n.createdAt).getTime()).sort((a, b) => a - b);
+  const cutoff = ts[0] + (ts[ts.length - 1] - ts[0]) * (progress / 100);
+  return new Set(nodes.filter((n) => new Date(n.createdAt).getTime() <= cutoff).map((n) => n.id));
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -251,7 +102,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   sidebarOpen: false,
   activePanel: 'none',
   selectedNode: null,
-
+  timelineProgress: 100,
+  visibleNodeIds: null,
   commandPaletteOpen: false,
   contextMenu: { open: false, x: 0, y: 0, nodeId: null, mergeMode: false },
   inlineEditId: null,
@@ -260,16 +112,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   showSummaryPanel: false,
   showTimelinePanel: false,
 
-  setNodes: (nodes) => set({ nodes }),
+  setNodes: (nodes) => set({ nodes, visibleNodeIds: computeVisible(nodes, get().timelineProgress) }),
   setEdges: (edges) => set({ edges }),
-  loadGraph: (graph) =>
-    set({
-      nodes: graph.nodes,
-      edges: graph.edges,
-      canvasName: graph.canvas.name,
-      summary: graph.summary ?? null,
-      factsTable: graph.factsTable ?? null,
-    }),
+  loadGraph: (graph) => set({
+    nodes: graph.nodes, edges: graph.edges, canvasName: graph.canvas.name,
+    summary: graph.summary ?? null, factsTable: graph.factsTable ?? null,
+    visibleNodeIds: computeVisible(graph.nodes, get().timelineProgress),
+  }),
   setFocusedNode: (focusedNodeId) => set({ focusedNodeId }),
   setHoveredNode: (hoveredNodeId) => set({ hoveredNodeId }),
   setSelectedNode: (selectedNodeId) => set({ selectedNodeId }),
@@ -277,170 +126,63 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setActivePanel: (activePanel) => set({ activePanel, sidebarOpen: activePanel !== 'none' }),
   setSelectedNodeData: (selectedNode) => set({ selectedNode }),
-
   focusNode: (nodeId) => set({ focusedNodeId: nodeId }),
-
-  openNodeDetail: (node) =>
-    set({
-      selectedNode: node,
-      activePanel: 'node-detail',
-      sidebarOpen: true,
-      focusedNodeId: node.id,
-    }),
-
-  closePanels: () =>
-    set({
-      sidebarOpen: false,
-      activePanel: 'none',
-      selectedNode: null,
-      focusedNodeId: null,
-    }),
-
+  openNodeDetail: (node) => set({ selectedNode: node, activePanel: 'node-detail', sidebarOpen: true, focusedNodeId: node.id }),
+  closePanels: () => set({ sidebarOpen: false, activePanel: 'none', selectedNode: null, focusedNodeId: null }),
   loadDemo: () => {
     const graph = generateDemoGraph();
-    set({
-      nodes: graph.nodes,
-      edges: graph.edges,
-      canvasName: graph.canvas.name,
-      summary: graph.summary ?? null,
-      factsTable: graph.factsTable ?? null,
-    });
+    set({ nodes: graph.nodes, edges: graph.edges, canvasName: graph.canvas.name,
+      summary: graph.summary ?? null, factsTable: graph.factsTable ?? null, visibleNodeIds: null });
   },
-
-  // ── Node CRUD ──
+  setTimelineProgress: (progress) => set({ timelineProgress: progress, visibleNodeIds: computeVisible(get().nodes, progress) }),
   addNode: (partial) => {
     const now = new Date().toISOString();
     const id = partial.id || `node-${uuidv4().slice(0, 8)}`;
-    const node: InosNode = {
-      id,
-      type: partial.type ?? 'claim',
-      title: partial.title ?? 'Untitled',
-      content: partial.content ?? '',
-      author: partial.author ?? DEFAULT_AUTHOR,
-      createdAt: partial.createdAt ?? now,
-      updatedAt: now,
-      visits: partial.visits ?? [],
-      dependsOn: partial.dependsOn ?? [],
+    const node: InosNode = { id, type: partial.type ?? 'claim', title: partial.title ?? 'Untitled',
+      content: partial.content ?? '', author: partial.author ?? DEFAULT_AUTHOR, createdAt: partial.createdAt ?? now,
+      updatedAt: now, visits: partial.visits ?? [], dependsOn: partial.dependsOn ?? [],
       staleness: partial.staleness ?? { state: 'fresh', evaluatedAt: now, cascadeDepth: 0 },
-      canvasId: partial.canvasId ?? 'demo-canvas',
-      status: partial.status ?? 'fresh',
-      tags: partial.tags ?? [],
-      schemaVersion: partial.schemaVersion ?? '1.0.0',
-    };
-    set((state) => ({ nodes: [...state.nodes, node] }));
+      canvasId: partial.canvasId ?? 'demo-canvas', status: partial.status ?? 'fresh',
+      tags: partial.tags ?? [], schemaVersion: partial.schemaVersion ?? '1.0.0' };
+    set((s) => { const nn = [...s.nodes, node]; return { nodes: nn, visibleNodeIds: computeVisible(nn, s.timelineProgress) }; });
     return node;
   },
-
-  editNode: (id, updates) =>
-    set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === id
-          ? { ...n, ...updates, updatedAt: new Date().toISOString() }
-          : n
-      ),
-    })),
-
-  deleteNode: (id) =>
-    set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === id
-          ? { ...n, status: 'orphaned' as const, updatedAt: new Date().toISOString() }
-          : n
-      ),
-      edges: state.edges.filter((e) => e.sourceId !== id && e.targetId !== id),
-    })),
-
-  // ── Edge CRUD ──
+  editNode: (id, updates) => set((s) => ({ nodes: s.nodes.map((n) => n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n) })),
+  deleteNode: (id) => set((s) => ({ nodes: s.nodes.map((n) => n.id === id ? { ...n, status: 'orphaned' as const, updatedAt: new Date().toISOString() } : n),
+    edges: s.edges.filter((e) => e.sourceId !== id && e.targetId !== id) })),
   addEdge: (partial) => {
     const now = new Date().toISOString();
-    const id = partial.id || `edge-${uuidv4().slice(0, 8)}`;
-    const edge: InosEdge = {
-      id,
-      type: partial.type ?? 'supports',
-      sourceId: partial.sourceId ?? '',
-      targetId: partial.targetId ?? '',
-      label: partial.label,
-      createdAt: partial.createdAt ?? now,
-      author: partial.author ?? DEFAULT_AUTHOR,
-      canvasId: partial.canvasId ?? 'demo-canvas',
-      schemaVersion: partial.schemaVersion ?? '1.0.0',
-    };
-    set((state) => ({ edges: [...state.edges, edge] }));
+    const edge: InosEdge = { id: partial.id || `edge-${uuidv4().slice(0, 8)}`, type: partial.type ?? 'supports',
+      sourceId: partial.sourceId ?? '', targetId: partial.targetId ?? '', label: partial.label,
+      createdAt: partial.createdAt ?? now, author: partial.author ?? DEFAULT_AUTHOR,
+      canvasId: partial.canvasId ?? 'demo-canvas', schemaVersion: partial.schemaVersion ?? '1.0.0' };
+    set((s) => ({ edges: [...s.edges, edge] }));
     return edge;
   },
-
-  // ── UI State ──
-  setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
-
-  setContextMenu: (partial) =>
-    set((state) => ({
-      contextMenu: { ...state.contextMenu, ...partial },
-    })),
-
-  setInlineEditId: (inlineEditId) => set({ inlineEditId }),
-
-  setToolbarPlacementMode: (toolbarPlacementMode) => set({ toolbarPlacementMode }),
-
-  togglePanel: (panel) =>
-    set((state) => {
-      const key = `show${panel.charAt(0).toUpperCase()}${panel.slice(1)}Panel` as
-        | 'showFactsPanel'
-        | 'showSummaryPanel'
-        | 'showTimelinePanel';
-      return { [key]: !state[key] };
-    }),
-
-  // ── Canvas Interaction ──
+  setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+  setContextMenu: (p) => set((s) => ({ contextMenu: { ...s.contextMenu, ...p } })),
+  setInlineEditId: (id) => set({ inlineEditId: id }),
+  setToolbarPlacementMode: (mode) => set({ toolbarPlacementMode: mode }),
+  togglePanel: (panel) => set((s) => {
+    const key = `show${panel.charAt(0).toUpperCase()}${panel.slice(1)}Panel` as keyof GraphState;
+    return { [key]: !s[key] };
+  }),
   handleCanvasClick: (screenX: number, screenY: number) => {
     const { toolbarPlacementMode, addNode } = get();
-    if (toolbarPlacementMode) {
-      addNode({
-        type: toolbarPlacementMode,
-        title: `New ${toolbarPlacementMode}`,
-        content: '',
-      });
-      set({ toolbarPlacementMode: null });
-    }
+    if (toolbarPlacementMode) { addNode({ type: toolbarPlacementMode, title: `New ${toolbarPlacementMode}`, content: '' }); set({ toolbarPlacementMode: null }); }
   },
 }));
 
-// Helper: get node color by type
 export function getNodeColor(type: InosNode['type']): string {
-  const colors: Record<string, string> = {
-    claim: '#00f5d4',
-    question: '#f15bb5',
-    decision: '#7b2ff7',
-    evidence: '#00ff87',
-    branch: '#fee440',
-    synthesis: '#00f5d4',
-    deliberation: '#ff9f1c',
-    constraint: '#ff6b6b',
-    assumption: '#f15bb5',
-    insight: '#00f5d4',
-    artifact: '#7b2ff7',
-    fact: '#00ff87',
-  };
-  return colors[type] ?? '#00f5d4';
+  const c: Record<string, string> = { claim:'#00f5d4', question:'#f15bb5', decision:'#7b2ff7', evidence:'#00ff87', branch:'#fee440', synthesis:'#00f5d4', deliberation:'#ff9f1c', constraint:'#ff6b6b', assumption:'#f15bb5', insight:'#00f5d4', artifact:'#7b2ff7', fact:'#00ff87' };
+  return c[type] ?? '#00f5d4';
 }
 
-// Helper: get edge color by type
 export function getEdgeColor(type: InosEdge['type']): string {
-  const colors: Record<string, string> = {
-    supports: '#00ff87',
-    challenges: '#ff6b6b',
-    refines: '#00f5d4',
-    diverges: '#ff9f1c',
-    merges: '#7b2ff7',
-    depends_on: '#f15bb5',
-    references: '#fee440',
-    temporal: '#00f5d4',
-    replaces: '#ff6b6b',
-    inherits: '#7b2ff7',
-  };
-  return colors[type] ?? '#94a3b8';
+  const c: Record<string, string> = { supports:'#00ff87', challenges:'#ff6b6b', refines:'#00f5d4', diverges:'#ff9f1c', merges:'#7b2ff7', depends_on:'#f15bb5', references:'#fee440', temporal:'#00f5d4', replaces:'#ff6b6b', inherits:'#7b2ff7' };
+  return c[type] ?? '#94a3b8';
 }
 
-// Helper: get human-readable label for node type
 export function getNodeTypeLabel(type: NodeType): string {
   return COMMAND_NODE_TYPES.find((t) => t.type === type)?.label ?? type;
 }

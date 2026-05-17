@@ -14,6 +14,8 @@ import { CommandPaletteContainer } from '@/components/ui/CommandPalette';
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar';
 import { ContextMenu } from '@/components/canvas/ContextMenu';
 import { InlineEditorContainer } from '@/components/nodes/InlineEditor';
+import { TimelineSidebar } from '@/components/canvas/TimelineSidebar';
+import { CreateCanvasModal } from '@/components/panels/CreateCanvasModal';
 
 // Dynamic import to avoid SSR issues with Three.js
 const Canvas3D = dynamic(() => import('@/components/canvas/Canvas3D'), {
@@ -79,6 +81,7 @@ function TopBar() {
         </button>
 
         {[
+          { key: 'create' as const, label: '+ New' },
           { key: 'import' as const, label: 'Import' },
           { key: 'summary' as const, label: 'Summary' },
           { key: 'facts' as const, label: 'Facts' },
@@ -182,6 +185,9 @@ export default function CanvasPage() {
       </div>
       <Legend />
 
+      {/* 2D Timeline sidebar */}
+      <TimelineSidebar />
+
       {/* Canvas toolbar */}
       <CanvasToolbar />
 
@@ -198,6 +204,9 @@ export default function CanvasPage() {
       <AnimatePresence>
         <SidePanelRouter />
       </AnimatePresence>
+
+      {/* Create canvas modal */}
+      <CreateCanvasModal />
     </main>
   );
 }

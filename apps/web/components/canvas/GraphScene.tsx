@@ -102,12 +102,21 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
 }
 
 export function GraphScene() {
-  const { nodes, edges, hoveredNodeId, setHoveredNode, openNodeDetail } = useGraphStore();
+  const { nodes, edges, hoveredNodeId, setHoveredNode, openNodeDetail, visibleNodeIds } = useGraphStore();
   const positions = useForceLayout(nodes, edges);
+
+  // Filter nodes and edges based on timeline visibility
+  const visibleNodes = visibleNodeIds
+    ? nodes.filter((n) => visibleNodeIds.has(n.id))
+    : nodes;
+  const visibleNodeSet = new Set(visibleNodes.map((n) => n.id));
+  const visibleEdges = edges.filter(
+    (e) => visibleNodeSet.has(e.sourceId) && visibleNodeSet.has(e.targetId)
+  );
 
   return (
     <group>
-      {nodes.map((node) => {
+      {visibleNodes.map((node) => {
         const pos = positions.get(node.id) ?? [0, 0, 0];
         const isHovered = hoveredNodeId === node.id;
         return (
@@ -123,7 +132,7 @@ export function GraphScene() {
         );
       })}
 
-      {edges.map((edge) => {
+      {visibleEdges.map((edge) => {
         const sourcePos = positions.get(edge.sourceId);
         const targetPos = positions.get(edge.targetId);
         if (!sourcePos || !targetPos) return null;
