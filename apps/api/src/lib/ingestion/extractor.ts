@@ -30,7 +30,7 @@ import type {
 // --- Configuration ---
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
 
 function getOpenRouterKey(): string | undefined {
   return process.env.OPENROUTER_API_KEY;
@@ -99,9 +99,9 @@ async function callLLM(
   const apiKey = getOpenRouterKey();
 
   if (!apiKey) {
-    // No API key — return simulated response for end-to-end testing
-    console.log('[ingestion] No OpenRouter API key; using simulated response');
-    return simulateLLMResponse(prompt);
+    throw new Error(
+      'OPENROUTER_API_KEY not configured. Ingestion requires a real LLM call; the previous canned-response fallback was removed in phase-0 cleanup.',
+    );
   }
 
   const response = await fetch(OPENROUTER_API_URL, {
@@ -145,111 +145,6 @@ async function callLLM(
   }
 
   return content;
-}
-
-// --- Simulated LLM response (no API key fallback) ---
-
-function simulateLLMResponse(_prompt: string): string {
-  return JSON.stringify({
-    nodes: [
-      {
-        id: 'n1',
-        type: 'claim',
-        title: 'Ocean is the origin of life',
-        content:
-          'All known life on Earth traces its evolutionary lineage back to marine organisms.',
-        author: 'Speaker 1',
-        dependsOn: [],
-      },
-      {
-        id: 'n2',
-        type: 'fact',
-        title: 'Hydrothermal vents discovered 1977',
-        content:
-          'Deep-sea hydrothermal vent ecosystems host chemosynthetic life.',
-        author: 'Speaker 2',
-        dependsOn: [],
-        factKey: 'hydrothermal_vents_1977',
-      },
-      {
-        id: 'n3',
-        type: 'question',
-        title: 'Could life exist without water?',
-        content:
-          'Are there alternative solvents that could support biochemistry?',
-        author: 'Speaker 1',
-        dependsOn: ['n1'],
-      },
-      {
-        id: 'n4',
-        type: 'decision',
-        title: 'Focus on Earth-origin hypothesis',
-        content:
-          'Ground all arguments in terrestrial biology before expanding to exobiology.',
-        author: 'Speaker 2',
-        dependsOn: ['n3'],
-      },
-      {
-        id: 'n5',
-        type: 'claim',
-        title: 'Chemosynthesis predates photosynthesis',
-        content:
-          'The earliest metabolic pathways were chemosynthetic, using inorganic compounds from vents.',
-        author: 'Speaker 1',
-        dependsOn: ['n2'],
-      },
-      {
-        id: 'n6',
-        type: 'assumption',
-        title: 'Earth conditions were necessary',
-        content:
-          'The specific conditions on early Earth (temperature, chemistry, energy sources) were required for abiogenesis.',
-        author: 'Speaker 2',
-        dependsOn: ['n1'],
-      },
-    ],
-    edges: [
-      {
-        type: 'supports',
-        source: 'n2',
-        target: 'n1',
-        label: 'evidence for',
-      },
-      {
-        type: 'diverges',
-        source: 'n3',
-        target: 'n1',
-        label: 'challenges scope of',
-      },
-      {
-        type: 'refines',
-        source: 'n4',
-        target: 'n3',
-        label: 'narrows to',
-      },
-      {
-        type: 'supports',
-        source: 'n5',
-        target: 'n1',
-        label: 'strengthens claim',
-      },
-      {
-        type: 'depends_on',
-        source: 'n5',
-        target: 'n2',
-        label: 'builds on fact',
-      },
-      {
-        type: 'supports',
-        source: 'n6',
-        target: 'n1',
-        label: 'contextual assumption',
-      },
-    ],
-    canvasName: 'Origin of Life — Discussion',
-    summary:
-      'A discussion exploring the hypothesis that life originated in Earth\'s oceans. Speakers referenced hydrothermal vent discoveries from 1977 as supporting evidence, debated whether alternative biochemistries could exist without water, and agreed to ground the analysis in terrestrial biology first. The consensus was that chemosynthetic metabolism likely predates photosynthesis.',
-  });
 }
 
 // --- Parse LLM response ---
@@ -370,7 +265,7 @@ function buildGraph(
       (p) => p.id === (node as any)._extractionId
     );
     if (extNode) {
-      node.dependsOn = extNode.dependsOn
+      node.dependsOn = (extNode.dependsOn ?? [])
         .map((d) => extIdToInosId.get(d))
         .filter(Boolean) as string[];
     }
