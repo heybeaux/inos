@@ -5,30 +5,39 @@ import { useGraphStore, getNodeColor } from '@/lib/store';
 import { Card } from '@/components/ui/Card';
 import { useMemo } from 'react';
 
+function formatDate(ts: number, opts: Intl.DateTimeFormatOptions): string {
+  if (!ts || isNaN(ts)) return '—';
+  try { return new Date(ts).toLocaleDateString('en-US', opts); } catch { return '—'; }
+}
+
 export function TimelinePanel() {
-  const {
-    nodes,
-    edges,
-    timelineProgress,
-    setTimelineProgress,
-    setActivePanel,
-  } = useGraphStore();
+  const { nodes, edges, timelineProgress, setTimelineProgress, setActivePanel } = useGraphStore();
 
   const timeRange = useMemo(() => {
-    if (nodes.length === 0) return { min: 0, max: 0, span: '' };
-    const ts = nodes.map((n) => new Date(n.createdAt).getTime()).sort((a, b) => a - b);
-    return { min: ts[0], max: ts[ts.length - 1], span: `${Math.round((ts[ts.length - 1] - ts[0]) / 86400000)}d` };
+    if (nodes.length === 0) return { min: 0, max: 0, span: '—' };
+    const timestamps = nodes.map((n) => new Date(n.createdAt).getTime()).filter((t) => t > 0 && !isNaN(t));
+    if (timestamps.length === 0) return { min: 0, max: 0, span: '—' };
+    const sorted = timestamps.sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const days = Math.round((max - min) / 86400000);
+    return { min, max, span: days > 0 ? `${days}d` : '< 1d' };
   }, [nodes]);
 
   const currentDateLabel = useMemo(() => {
+    if (!timeRange.min || !timeRange.max) return '—';
     const cutoff = timeRange.min + (timeRange.max - timeRange.min) * (timelineProgress / 100);
-    return new Date(cutoff).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatDate(cutoff, { month: 'short', day: 'numeric', year: 'numeric' });
   }, [timelineProgress, timeRange]);
 
   const visibleCount = useMemo(() => {
     if (timelineProgress >= 100) return nodes.length;
+    if (!timeRange.max) return 0;
     const cutoff = timeRange.min + (timeRange.max - timeRange.min) * (timelineProgress / 100);
-    return nodes.filter((n) => new Date(n.createdAt).getTime() <= cutoff).length;
+    return nodes.filter((n) => {
+      const t = new Date(n.createdAt).getTime();
+      return t > 0 && !isNaN(t) && t <= cutoff;
+    }).length;
   }, [nodes, timelineProgress, timeRange]);
 
   return (
@@ -50,9 +59,9 @@ export function TimelinePanel() {
           Drag the slider to wind time forward/backward. The 3D canvas and left sidebar update in real-time.
         </p>
         <div className="flex justify-between text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-          <span>{nodes.length > 0 ? new Date(timeRange.min).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
+          <span>{formatDate(timeRange.min, { month: 'short', day: 'numeric' })}</span>
           <span style={{ color: 'var(--bio-amber)' }}>{currentDateLabel}</span>
-          <span>{nodes.length > 0 ? new Date(timeRange.max).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
+          <span>{formatDate(timeRange.max, { month: 'short', day: 'numeric' })}</span>
         </div>
         <input
           type="range"
