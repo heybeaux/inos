@@ -92,7 +92,7 @@ Rules:
 
 app.route('', ingestionRoute);
 
-const port = 4000;
+const port = Number(process.env.INOS_API_PORT ?? '4000');
 console.log(`Inos API server is running on port ${port}`);
 serve({ fetch: app.fetch, port });
 

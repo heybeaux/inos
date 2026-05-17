@@ -1,8 +1,8 @@
 {
-  "startedAt": "2026-05-17T05:39:27.876Z",
-  "finishedAt": "2026-05-17T05:49:36.717Z",
+  "startedAt": "2026-05-17T06:43:13.423Z",
+  "finishedAt": "2026-05-17T06:57:25.451Z",
   "config": {
-    "apiUrl": "http://localhost:4000",
+    "apiUrl": "http://localhost:4001",
     "passes": 2,
     "thresholds": {
       "nodeRecall": 0.85,
@@ -17,66 +17,66 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 21,
-          "edgesExtracted": 31,
-          "nodeRecall": 0.14285714285714285,
-          "edgePrecision": 0,
+          "nodesExtracted": 28,
+          "edgesExtracted": 36,
+          "nodeRecall": 0.42857142857142855,
+          "edgePrecision": 0.1388888888888889,
           "schemaValid": true,
           "matchedNodeIds": [
+            "opt-fix-schema",
+            "opt-migrate-snowflake",
+            "opt-lakehouse",
+            "decision-fix-schema",
             "fact-redshift-cost",
-            "decision-fix-schema"
+            "fact-cluster-config"
           ],
           "missedNodeIds": [
             "q-migrate-snowflake",
             "fact-p95-28s",
-            "fact-cluster-config",
             "fact-rollup-scan",
             "claim-snowflake-faster",
             "assumption-real-problem-warehouse",
             "insight-schema-is-problem",
-            "opt-fix-schema",
-            "opt-migrate-snowflake",
-            "opt-lakehouse",
             "constraint-data-growth",
             "reversal-condition"
           ],
           "spuriousEdgeCount": 31,
-          "durationMs": 54909
+          "durationMs": 82301
         },
         {
           "pass": 2,
-          "nodesExtracted": 17,
-          "edgesExtracted": 23,
-          "nodeRecall": 0.2857142857142857,
-          "edgePrecision": 0,
+          "nodesExtracted": 22,
+          "edgesExtracted": 28,
+          "nodeRecall": 0.42857142857142855,
+          "edgePrecision": 0.17857142857142858,
           "schemaValid": true,
           "matchedNodeIds": [
+            "opt-fix-schema",
+            "opt-migrate-snowflake",
+            "opt-lakehouse",
+            "decision-fix-schema",
             "fact-redshift-cost",
-            "fact-rollup-scan",
-            "fact-cluster-config",
-            "decision-fix-schema"
+            "reversal-condition"
           ],
           "missedNodeIds": [
             "q-migrate-snowflake",
             "fact-p95-28s",
+            "fact-cluster-config",
+            "fact-rollup-scan",
             "claim-snowflake-faster",
             "assumption-real-problem-warehouse",
             "insight-schema-is-problem",
-            "opt-fix-schema",
-            "opt-migrate-snowflake",
-            "opt-lakehouse",
-            "constraint-data-growth",
-            "reversal-condition"
+            "constraint-data-growth"
           ],
           "spuriousEdgeCount": 23,
-          "durationMs": 49516
+          "durationMs": 68728
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.21428571428571427,
-        "avgEdgePrecision": 0,
+        "avgNodeRecall": 0.42857142857142855,
+        "avgEdgePrecision": 0.15873015873015872,
         "schemaValidRate": 1,
-        "avgDurationMs": 52212.5
+        "avgDurationMs": 75514.5
       },
       "deterministic": false
     },
@@ -86,70 +86,70 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 28,
-          "edgesExtracted": 33,
-          "nodeRecall": 0.4,
-          "edgePrecision": 0.06060606060606061,
+          "nodesExtracted": 31,
+          "edgesExtracted": 42,
+          "nodeRecall": 0.3333333333333333,
+          "edgePrecision": 0.023809523809523808,
           "schemaValid": true,
           "matchedNodeIds": [
-            "fact-desktop-tied",
-            "fact-lcp-gap",
-            "fact-stripe-error-rate",
             "h1-itp-storage",
-            "open-q-fix",
-            "decision-applepay-holdout"
+            "h2-lcp-rage-quit",
+            "decision-applepay-holdout",
+            "fact-lcp-gap",
+            "fact-stripe-error-rate"
           ],
           "missedNodeIds": [
             "q-safari-conversion-drop",
             "fact-safari-conversion",
+            "fact-desktop-tied",
             "fact-applepay-launch",
-            "h2-lcp-rage-quit",
             "h3-applepay-silent-fail",
             "h4-low-intent-traffic",
             "challenge-h2-funnel-shape",
             "challenge-h4-utm-stable",
-            "assumption-server-side-fine"
+            "assumption-server-side-fine",
+            "open-q-fix"
           ],
-          "spuriousEdgeCount": 31,
-          "durationMs": 52265
+          "spuriousEdgeCount": 41,
+          "durationMs": 91414
         },
         {
           "pass": 2,
-          "nodesExtracted": 31,
-          "edgesExtracted": 36,
-          "nodeRecall": 0.4,
-          "edgePrecision": 0.027777777777777776,
+          "nodesExtracted": 30,
+          "edgesExtracted": 33,
+          "nodeRecall": 0.26666666666666666,
+          "edgePrecision": 0.030303030303030304,
           "schemaValid": true,
           "matchedNodeIds": [
-            "fact-desktop-tied",
+            "h1-itp-storage",
             "fact-lcp-gap",
             "fact-stripe-error-rate",
-            "h1-itp-storage",
-            "decision-applepay-holdout",
-            "open-q-fix"
+            "challenge-h2-funnel-shape"
           ],
           "missedNodeIds": [
             "q-safari-conversion-drop",
             "fact-safari-conversion",
+            "fact-desktop-tied",
             "fact-applepay-launch",
             "h2-lcp-rage-quit",
             "h3-applepay-silent-fail",
             "h4-low-intent-traffic",
-            "challenge-h2-funnel-shape",
             "challenge-h4-utm-stable",
-            "assumption-server-side-fine"
+            "assumption-server-side-fine",
+            "decision-applepay-holdout",
+            "open-q-fix"
           ],
-          "spuriousEdgeCount": 35,
-          "durationMs": 54101
+          "spuriousEdgeCount": 32,
+          "durationMs": 92762
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.4,
-        "avgEdgePrecision": 0.04419191919191919,
+        "avgNodeRecall": 0.3,
+        "avgEdgePrecision": 0.027056277056277056,
         "schemaValidRate": 1,
-        "avgDurationMs": 53183
+        "avgDurationMs": 92088
       },
-      "deterministic": true
+      "deterministic": false
     },
     {
       "fixtureId": "03-decision-journal",
@@ -157,66 +157,66 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 22,
-          "edgesExtracted": 26,
-          "nodeRecall": 0.2857142857142857,
-          "edgePrecision": 0.07692307692307693,
+          "nodesExtracted": 23,
+          "edgesExtracted": 33,
+          "nodeRecall": 0.35714285714285715,
+          "edgePrecision": 0.12121212121212122,
           "schemaValid": true,
           "matchedNodeIds": [
-            "decision-rebuild",
-            "fact-solo-usage",
-            "fact-ttf-canvas",
-            "assumption-need-invite-step"
+            "insight-positioning-mismatch",
+            "opt-a-remove-invite",
+            "opt-b-full-rebuild",
+            "opt-c-personalize",
+            "fact-solo-usage"
           ],
           "missedNodeIds": [
             "q-keep-or-rebuild",
             "fact-activation-rate",
             "fact-invite-drop",
-            "insight-positioning-mismatch",
-            "opt-a-remove-invite",
-            "opt-b-full-rebuild",
-            "opt-c-personalize",
+            "fact-ttf-canvas",
+            "assumption-need-invite-step",
+            "decision-rebuild",
             "constraint-no-ab-test",
             "reversal-conditions",
             "open-q-teammate-path"
           ],
-          "spuriousEdgeCount": 24,
-          "durationMs": 56711
+          "spuriousEdgeCount": 29,
+          "durationMs": 84042
         },
         {
           "pass": 2,
-          "nodesExtracted": 20,
-          "edgesExtracted": 27,
-          "nodeRecall": 0.35714285714285715,
-          "edgePrecision": 0.14814814814814814,
+          "nodesExtracted": 27,
+          "edgesExtracted": 35,
+          "nodeRecall": 0.42857142857142855,
+          "edgePrecision": 0.08571428571428572,
           "schemaValid": true,
           "matchedNodeIds": [
-            "decision-rebuild",
-            "fact-activation-rate",
-            "fact-solo-usage",
-            "fact-ttf-canvas",
-            "assumption-need-invite-step"
-          ],
-          "missedNodeIds": [
-            "q-keep-or-rebuild",
-            "fact-invite-drop",
-            "insight-positioning-mismatch",
             "opt-a-remove-invite",
             "opt-b-full-rebuild",
             "opt-c-personalize",
+            "fact-solo-usage",
             "constraint-no-ab-test",
+            "fact-ttf-canvas"
+          ],
+          "missedNodeIds": [
+            "q-keep-or-rebuild",
+            "fact-activation-rate",
+            "fact-invite-drop",
+            "assumption-need-invite-step",
+            "insight-positioning-mismatch",
+            "decision-rebuild",
             "reversal-conditions",
             "open-q-teammate-path"
           ],
-          "spuriousEdgeCount": 23,
-          "durationMs": 53555
+          "spuriousEdgeCount": 32,
+          "durationMs": 82365
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.3214285714285714,
-        "avgEdgePrecision": 0.11253561253561253,
+        "avgNodeRecall": 0.39285714285714285,
+        "avgEdgePrecision": 0.10346320346320347,
         "schemaValidRate": 1,
-        "avgDurationMs": 55133
+        "avgDurationMs": 83203.5
       },
       "deterministic": false
     },
@@ -226,70 +226,70 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 21,
-          "edgesExtracted": 25,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.16,
+          "nodesExtracted": 25,
+          "edgesExtracted": 33,
+          "nodeRecall": 0.4,
+          "edgePrecision": 0.12121212121212122,
           "schemaValid": true,
           "matchedNodeIds": [
+            "q-open-source",
             "claim-recruiting-magnet",
-            "claim-schelling-point",
             "claim-algorithm-is-product",
-            "challenge-algorithm-not-product",
             "claim-restrictive-license",
-            "claim-open-boring-80",
-            "decision-write-blog-posts"
+            "decision-write-blog-posts",
+            "branch-fast-follow-competitor"
           ],
           "missedNodeIds": [
-            "q-open-source",
+            "claim-schelling-point",
+            "challenge-algorithm-not-product",
             "refine-median-competitor",
             "challenge-license-worst-of-both",
+            "claim-open-boring-80",
             "challenge-boring-not-interesting",
             "assumption-primitives-are-interesting",
             "branch-revisit-at-series-b",
-            "branch-fast-follow-competitor",
             "meta-risk-aversion"
           ],
-          "spuriousEdgeCount": 21,
-          "durationMs": 45614
+          "spuriousEdgeCount": 29,
+          "durationMs": 90232
         },
         {
           "pass": 2,
-          "nodesExtracted": 22,
-          "edgesExtracted": 25,
+          "nodesExtracted": 27,
+          "edgesExtracted": 31,
           "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.04,
+          "edgePrecision": 0.0967741935483871,
           "schemaValid": true,
           "matchedNodeIds": [
+            "q-open-source",
             "claim-recruiting-magnet",
-            "claim-schelling-point",
             "claim-algorithm-is-product",
             "challenge-algorithm-not-product",
             "claim-restrictive-license",
-            "claim-open-boring-80",
-            "decision-write-blog-posts"
+            "decision-write-blog-posts",
+            "branch-fast-follow-competitor"
           ],
           "missedNodeIds": [
-            "q-open-source",
+            "claim-schelling-point",
             "refine-median-competitor",
             "challenge-license-worst-of-both",
+            "claim-open-boring-80",
             "challenge-boring-not-interesting",
             "assumption-primitives-are-interesting",
             "branch-revisit-at-series-b",
-            "branch-fast-follow-competitor",
             "meta-risk-aversion"
           ],
-          "spuriousEdgeCount": 24,
-          "durationMs": 55402
+          "spuriousEdgeCount": 28,
+          "durationMs": 86802
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.4666666666666667,
-        "avgEdgePrecision": 0.1,
+        "avgNodeRecall": 0.43333333333333335,
+        "avgEdgePrecision": 0.10899315738025415,
         "schemaValidRate": 1,
-        "avgDurationMs": 50508
+        "avgDurationMs": 88517
       },
-      "deterministic": true
+      "deterministic": false
     },
     {
       "fixtureId": "05-messy-markdown",
@@ -297,85 +297,85 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 14,
-          "edgesExtracted": 18,
-          "nodeRecall": 0.25,
-          "edgePrecision": 0.05555555555555555,
+          "nodesExtracted": 28,
+          "edgesExtracted": 27,
+          "nodeRecall": 0.4375,
+          "edgePrecision": 0.07407407407407407,
           "schemaValid": true,
           "matchedNodeIds": [
+            "challenge-targeting-complexity",
+            "insight-opportunity-cost",
+            "decision-buy-launchdarkly",
+            "open-q-growthbook",
             "fact-ld-pricing",
             "fact-build-estimate",
-            "decision-buy-launchdarkly",
-            "open-q-growthbook"
+            "fact-current-flag-state"
           ],
           "missedNodeIds": [
             "q-build-vs-buy",
-            "fact-current-flag-state",
             "claim-build-cheaper",
             "claim-need-only-basics",
             "assumption-low-flag-velocity",
             "challenge-streaming-complexity",
             "challenge-audit-soc2",
-            "challenge-targeting-complexity",
             "tentative-build-position",
-            "insight-opportunity-cost",
             "insight-2x-multiplier",
             "reversal-conditions"
           ],
-          "spuriousEdgeCount": 17,
-          "durationMs": 118257
+          "spuriousEdgeCount": 25,
+          "durationMs": 85406
         },
         {
           "pass": 2,
-          "nodesExtracted": 21,
-          "edgesExtracted": 29,
-          "nodeRecall": 0.1875,
-          "edgePrecision": 0.034482758620689655,
+          "nodesExtracted": 26,
+          "edgesExtracted": 30,
+          "nodeRecall": 0.4375,
+          "edgePrecision": 0.1,
           "schemaValid": true,
           "matchedNodeIds": [
-            "challenge-streaming-complexity",
+            "insight-opportunity-cost",
             "decision-buy-launchdarkly",
-            "open-q-growthbook"
+            "open-q-growthbook",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
+            "reversal-conditions"
           ],
           "missedNodeIds": [
             "q-build-vs-buy",
-            "fact-current-flag-state",
-            "fact-ld-pricing",
-            "fact-build-estimate",
             "claim-build-cheaper",
             "claim-need-only-basics",
             "assumption-low-flag-velocity",
+            "challenge-streaming-complexity",
             "challenge-audit-soc2",
             "challenge-targeting-complexity",
             "tentative-build-position",
-            "insight-opportunity-cost",
-            "insight-2x-multiplier",
-            "reversal-conditions"
+            "insight-2x-multiplier"
           ],
-          "spuriousEdgeCount": 28,
-          "durationMs": 68501
+          "spuriousEdgeCount": 27,
+          "durationMs": 87970
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.21875,
-        "avgEdgePrecision": 0.045019157088122604,
+        "avgNodeRecall": 0.4375,
+        "avgEdgePrecision": 0.08703703703703704,
         "schemaValidRate": 1,
-        "avgDurationMs": 93379
+        "avgDurationMs": 86688
       },
       "deterministic": false
     }
   ],
   "passed": false,
   "failures": [
-    "01-ai-conversation-log: nodeRecall 0.214 < 0.85",
-    "01-ai-conversation-log: edgePrecision 0.000 < 0.8",
-    "02-research-notes: nodeRecall 0.400 < 0.85",
-    "02-research-notes: edgePrecision 0.044 < 0.8",
-    "03-decision-journal: nodeRecall 0.321 < 0.85",
-    "03-decision-journal: edgePrecision 0.113 < 0.8",
-    "04-self-debate: nodeRecall 0.467 < 0.85",
-    "04-self-debate: edgePrecision 0.100 < 0.8",
-    "05-messy-markdown: nodeRecall 0.219 < 0.85",
-    "05-messy-markdown: edgePrecision 0.045 < 0.8"
+    "01-ai-conversation-log: nodeRecall 0.429 < 0.85",
+    "01-ai-conversation-log: edgePrecision 0.159 < 0.8",
+    "02-research-notes: nodeRecall 0.300 < 0.85",
+    "02-research-notes: edgePrecision 0.027 < 0.8",
+    "03-decision-journal: nodeRecall 0.393 < 0.85",
+    "03-decision-journal: edgePrecision 0.103 < 0.8",
+    "04-self-debate: nodeRecall 0.433 < 0.85",
+    "04-self-debate: edgePrecision 0.109 < 0.8",
+    "05-messy-markdown: nodeRecall 0.438 < 0.85",
+    "05-messy-markdown: edgePrecision 0.087 < 0.8"
   ]
 }
