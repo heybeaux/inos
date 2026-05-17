@@ -60,6 +60,9 @@ route.post('/api/ingest', async (c) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[ingestion] Error:', message);
+    if (message.startsWith('OPENROUTER_API_KEY not configured')) {
+      return c.json({ error: message }, 503);
+    }
     return c.json({ error: `Ingestion failed: ${message}` }, 500);
   }
 });

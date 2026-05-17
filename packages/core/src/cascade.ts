@@ -79,14 +79,24 @@ export class CascadeEngine {
   }
 
   private evaluateStaleness(node: InosNode): InosNode['staleness']['state'] {
-    const sourceNode = this.graph.nodes.find((n: InosNode) =>
-      node.dependsOn.includes(n.id),
-    );
+    if (node.dependsOn.length === 0) return node.staleness.state;
 
-    if (!sourceNode) return 'orphaned';
-    if (sourceNode.staleness.state === 'negated') return 'negated';
-    if (sourceNode.staleness.state === 'stale') return 'stale';
-    if (sourceNode.updatedAt > node.updatedAt) return 'stale';
+    const parents: InosNode[] = [];
+    let hasMissingParent = false;
+    for (const parentId of node.dependsOn) {
+      const parent = this.graph.nodes.find((n: InosNode) => n.id === parentId);
+      if (parent) {
+        parents.push(parent);
+      } else {
+        hasMissingParent = true;
+      }
+    }
+
+    if (parents.some((p) => p.staleness.state === 'negated')) return 'negated';
+    if (hasMissingParent) return 'orphaned';
+    if (parents.some((p) => p.staleness.state === 'orphaned')) return 'orphaned';
+    if (parents.some((p) => p.staleness.state === 'stale')) return 'stale';
+    if (parents.some((p) => p.updatedAt > node.updatedAt)) return 'stale';
 
     return 'fresh';
   }
