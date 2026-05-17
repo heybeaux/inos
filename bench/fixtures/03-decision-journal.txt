@@ -1,0 +1,76 @@
+2026-03-15 — Decision: should we keep the v1 onboarding flow or rebuild?
+
+## Context
+
+The v1 onboarding flow shipped in October 2025 — six months ago. It's a five-step wizard: email/password, workspace name, team size, primary use case, then invite teammates. The "invite teammates" step is what's been bugging me. We're a solo-thinker product. We added that step early because everyone said "B2B SaaS needs a teammate-invite step or you'll never get viral growth." I went along with it.
+
+Numbers as of last week:
+- Activation rate (defined: completes flow + creates first canvas within 24h): 38%
+- Drop on the "invite teammates" step alone: 22% of users who reach it abandon the entire signup
+- Of users who DO invite teammates, only 11% of invited teammates ever sign up
+- Of the activated users, 71% remain solo users at the 30-day mark
+- TTFCanvas (time-to-first-canvas) median is 4 minutes 12 seconds — high for a "thinking tool"
+
+I'm leaning toward rebuilding, but I want to think through it carefully before I burn a sprint on it.
+
+## Options
+
+### Option A: Keep v1, just remove the invite step
+
+Pros:
+- One PR. A day of work at most.
+- Removes the single biggest drop-off point.
+- Doesn't relitigate the rest of the flow.
+
+Cons:
+- The other steps (workspace name, team size, primary use case) are also doing work I'm not sure is justified. Team size in particular is weird for a solo product — half of users put "1" or skip it.
+- I'd be polishing a flow that may be the wrong flow.
+
+### Option B: Full rebuild as a single-screen "create your first canvas" experience
+
+Pros:
+- Drops users directly into the product. The product IS the onboarding.
+- Eliminates 4 of 5 steps. Just email + go.
+- Aligns with the solo-thinker positioning. We don't need "workspace name" — we need them to feel the product.
+
+Cons:
+- More work. Maybe 1.5 sprints.
+- Loses the data we currently collect on the team-size / use-case questions. Honestly though, that data has not driven a single product decision in six months.
+- Risk: a single-screen flow has been tried and rolled back at other companies. Sometimes friction is load-bearing — it sets expectations.
+
+### Option C: Personalize the flow based on referral source
+
+Pros:
+- Could in theory increase activation by matching the flow to intent (someone from a Hacker News post is different from someone from a Google ad).
+- Trendy / "smart" approach.
+
+Cons:
+- A LOT of work. Probably 3+ sprints.
+- We don't have the volume to A/B test variants meaningfully — we're at ~400 signups/week.
+- Smells like premature optimization. We haven't established that any version of the flow works yet.
+
+## Chosen option: B — full rebuild
+
+Reasoning: the v1 flow was designed for a product I no longer believe we're building (team collaboration tool). The right onboarding for a solo-thinker product is "drop them into a canvas with a starter prompt and let them feel the value." Option A is locally optimal — fewer steps, better numbers — but it doesn't address the structural mismatch.
+
+I'm also weighting the fact that 71% of activated users remain solo at 30 days. That's not a "viral team product that hasn't taken off yet" pattern. That's a solo product that I've been mis-positioning. The onboarding should match the actual usage.
+
+## What would have to be true for me to reverse this
+
+I will reverse this decision and go back to Option A if:
+
+1. After 4 weeks on the new flow, activation rate is below 38% (current). If we drop activation by removing the wizard, the wizard was doing useful work I didn't see.
+2. Day-7 retention drops by more than 3 percentage points. The wizard might be doing implicit qualification — filtering out tire-kickers — and removing it might let in users who churn faster.
+3. Support load increases meaningfully. The wizard answers some implicit questions ("what is this thing for?") that a cold canvas might not.
+
+I'm going to instrument those three metrics specifically before rollout so I'm not retrofitting the success criteria after the fact.
+
+## What I'm explicitly NOT going to do
+
+- I'm not going to A/B test this. We don't have the volume. I'll ship it to 100%, watch the metrics for 4 weeks, and roll back if any of the three reversal conditions trip.
+- I'm not going to add a "skip" button to the v1 wizard as a compromise. That's the worst of both — same code, same maintenance burden, but now with a confusing UX.
+- I'm not going to add the team-size / use-case questions inside the product as a "later" prompt. If I don't trust the data enough to act on it, I shouldn't collect it.
+
+Target ship date: 2026-04-05. Three weeks from today, accounting for a partial sprint already in flight.
+
+Open question I'm tracking: at what point does the solo positioning need a teammate-invite path back? If usage data later shows users who DO invite teammates have 3x retention, I'll need to add it back — but as a feature inside the product, not as an onboarding gate.

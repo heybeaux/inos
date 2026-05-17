@@ -1,0 +1,115 @@
+{
+  "fixtureId": "03-decision-journal",
+  "description": "Dated decision journal entry choosing to fully rebuild the v1 onboarding flow rather than patching it; rationale anchored on solo-thinker positioning.",
+  "format": "raw",
+  "topic": "v1 onboarding flow keep vs rebuild",
+  "nodes": [
+    {
+      "id": "q-keep-or-rebuild",
+      "type": "question",
+      "title": "Should we keep the v1 onboarding flow or rebuild?",
+      "aliases": ["keep v1 onboarding or rebuild", "rebuild onboarding"]
+    },
+    {
+      "id": "fact-activation-rate",
+      "type": "fact",
+      "title": "Activation rate is 38%",
+      "aliases": ["38% activation", "activation 38"]
+    },
+    {
+      "id": "fact-invite-drop",
+      "type": "fact",
+      "title": "22% of users who reach the invite-teammates step abandon signup",
+      "aliases": ["22% drop on invite step", "invite step drop"]
+    },
+    {
+      "id": "fact-solo-usage",
+      "type": "fact",
+      "title": "71% of activated users remain solo at 30 days",
+      "aliases": ["71% remain solo", "solo at 30 days"]
+    },
+    {
+      "id": "fact-ttf-canvas",
+      "type": "fact",
+      "title": "Median time-to-first-canvas is 4 minutes 12 seconds",
+      "aliases": ["TTFCanvas", "4 minutes 12 seconds"]
+    },
+    {
+      "id": "assumption-need-invite-step",
+      "type": "assumption",
+      "title": "B2B SaaS needs a teammate-invite step for viral growth",
+      "aliases": ["invite step needed for virality", "B2B SaaS needs invites"]
+    },
+    {
+      "id": "insight-positioning-mismatch",
+      "type": "insight",
+      "title": "v1 was designed for a team product; we are actually a solo-thinker product",
+      "aliases": ["positioning mismatch", "designed for the wrong product", "structural mismatch"]
+    },
+    {
+      "id": "opt-a-remove-invite",
+      "type": "branch",
+      "title": "Option A: Keep v1 but remove the invite step",
+      "aliases": ["Option A", "remove invite step only"]
+    },
+    {
+      "id": "opt-b-full-rebuild",
+      "type": "branch",
+      "title": "Option B: Full rebuild as a single-screen 'create your first canvas' experience",
+      "aliases": ["Option B", "single-screen onboarding", "full rebuild"]
+    },
+    {
+      "id": "opt-c-personalize",
+      "type": "branch",
+      "title": "Option C: Personalize the flow based on referral source",
+      "aliases": ["Option C", "personalize by referral source"]
+    },
+    {
+      "id": "decision-rebuild",
+      "type": "decision",
+      "title": "Choose Option B: full rebuild of onboarding as a single-screen canvas experience",
+      "aliases": ["chosen option B", "go with full rebuild", "rebuild onboarding"]
+    },
+    {
+      "id": "constraint-no-ab-test",
+      "type": "constraint",
+      "title": "Will ship to 100% (no A/B test) because volume is too low at ~400 signups/week",
+      "aliases": ["no A/B test", "ship to 100%", "volume too low"]
+    },
+    {
+      "id": "reversal-conditions",
+      "type": "constraint",
+      "title": "Reverse to Option A if activation drops below 38%, day-7 retention drops >3pp, or support load increases",
+      "aliases": ["reversal conditions", "would reverse if activation drops"]
+    },
+    {
+      "id": "open-q-teammate-path",
+      "type": "question",
+      "title": "At what point does the solo positioning need a teammate-invite path back?",
+      "aliases": ["when to add teammate invite back", "teammate path question"]
+    }
+  ],
+  "edges": [
+    { "type": "supports", "source": "fact-invite-drop", "target": "q-keep-or-rebuild" },
+    { "type": "supports", "source": "fact-activation-rate", "target": "q-keep-or-rebuild" },
+    { "type": "supports", "source": "fact-solo-usage", "target": "insight-positioning-mismatch" },
+    { "type": "challenges", "source": "insight-positioning-mismatch", "target": "assumption-need-invite-step" },
+    { "type": "supports", "source": "fact-ttf-canvas", "target": "insight-positioning-mismatch" },
+    { "type": "supports", "source": "insight-positioning-mismatch", "target": "opt-b-full-rebuild" },
+    { "type": "diverges", "source": "opt-a-remove-invite", "target": "opt-b-full-rebuild" },
+    { "type": "diverges", "source": "opt-c-personalize", "target": "opt-b-full-rebuild" },
+    { "type": "supports", "source": "opt-b-full-rebuild", "target": "decision-rebuild" },
+    { "type": "refines", "source": "constraint-no-ab-test", "target": "decision-rebuild" },
+    { "type": "refines", "source": "reversal-conditions", "target": "decision-rebuild" },
+    { "type": "depends_on", "source": "open-q-teammate-path", "target": "decision-rebuild" }
+  ],
+  "expectedTypeCounts": {
+    "question": 2,
+    "fact": 4,
+    "assumption": 1,
+    "insight": 1,
+    "branch": 3,
+    "decision": 1,
+    "constraint": 2
+  }
+}
