@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useGraphStore } from '@/lib/store';
+import { useGraphStore, getNodeColor } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
@@ -11,89 +11,79 @@ export function QueryPanel() {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [relevantNodeIds, setRelevantNodeIds] = useState<string[]>([]);
+  const [usedModel, setUsedModel] = useState<string | null>(null);
 
   const handleQuery = async () => {
     if (!query.trim()) return;
     setLoading(true);
     setResponse(null);
+    setError(null);
     setRelevantNodeIds([]);
+    setUsedModel(null);
 
-    // Simulate LLM processing delay
-    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const resp = await fetch('http://localhost:4000/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query.trim(),
+          nodes: nodes.map((n) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            content: n.content,
+            tags: n.tags,
+          })),
+          edges: edges.map((e) => ({
+            sourceId: e.sourceId,
+            targetId: e.targetId,
+            type: e.type,
+          })),
+        }),
+      });
 
-    // Graph traversal: find relevant nodes by matching query terms
-    const queryTerms = query
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((t) => t.length > 2)
-      .map((t) => t.replace(/[^a-z0-9]/g, ''));
+      const data = await resp.json();
 
-    const scored = nodes.map((node) => {
-      let score = 0;
-      const titleLower = node.title.toLowerCase();
-      const contentStr = typeof node.content === 'string'
-        ? node.content.toLowerCase()
-        : JSON.stringify(node.content).toLowerCase();
-      const tagsLower = node.tags.map((t) => t.toLowerCase());
-
-      for (const term of queryTerms) {
-        if (titleLower.includes(term)) score += 5;
-        if (contentStr.includes(term)) score += 2;
-        if (tagsLower.some((t) => t.includes(term))) score += 3;
+      if (!resp.ok) {
+        setError(data.error ?? 'Query failed');
+        return;
       }
 
-      // Bonus for nodes that are well-connected
-      const connectionCount = edges.filter(
-        (e) => e.sourceId === node.id || e.targetId === node.id
-      ).length;
-      score += connectionCount * 0.5;
+      setResponse(data.answer);
+      setUsedModel(data.model);
 
-      return { node, score };
-    });
+      // Still highlight relevant nodes via local scoring
+      const queryTerms = query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((t) => t.length > 2)
+        .map((t) => t.replace(/[^a-z0-9]/g, ''));
 
-    // Take top results above a threshold
-    const topResults = scored
-      .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-
-    setRelevantNodeIds(topResults.map((r) => r.node.id));
-
-    if (topResults.length === 0) {
-      setResponse(
-        `I couldn't find any nodes related to "${query}" in this canvas. ` +
-        `The graph currently has ${nodes.length} nodes covering topics like: ${[...new Set(nodes.flatMap((n) => n.tags))].slice(0, 6).join(', ')}. ` +
-        `Try asking about one of these topics, or expand the canvas with more content.`
-      );
-    } else {
-      const topNode = topResults[0].node;
-      const otherNodes = topResults.slice(1);
-
-      const topContent = typeof topNode.content === 'string'
-        ? topNode.content
-        : 'excerpt' in topNode.content && topNode.content.excerpt
-          ? topNode.content.excerpt
-          : JSON.stringify(topNode.content);
-
-      let answer = `**${topNode.title}** (${topNode.type})\n\n`;
-      answer += topContent.length > 400 ? topContent.slice(0, 400) + '…' : topContent;
-
-      if (otherNodes.length > 0) {
-        answer += `\n\n**Related nodes:**\n`;
-        for (const r of otherNodes) {
-          const connEdges = edges.filter(
-            (e) => e.sourceId === r.node.id || e.targetId === r.node.id
-          );
-          const connLabels = connEdges.map((e) => e.type).join(', ');
-          answer += `• ${r.node.title} (${r.node.type}${connLabels ? `, ${connLabels}` : ''})\n`;
+      const scored = nodes.map((node) => {
+        let score = 0;
+        const titleLower = node.title.toLowerCase();
+        const contentStr = typeof node.content === 'string'
+          ? node.content.toLowerCase()
+          : JSON.stringify(node.content).toLowerCase();
+        for (const term of queryTerms) {
+          if (titleLower.includes(term)) score += 5;
+          if (contentStr.includes(term)) score += 2;
         }
-      }
+        return { node, score };
+      });
 
-      setResponse(answer);
+      const topResults = scored
+        .filter((r) => r.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+      setRelevantNodeIds(topResults.map((r) => r.node.id));
+    } catch {
+      setError('Failed to connect to the API. Is the server running on port 4000?');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -109,18 +99,14 @@ export function QueryPanel() {
         <h2 className="text-lg font-semibold" style={{ color: 'var(--bio-purple)' }}>
           Natural Language Query
         </h2>
-        <button
-          onClick={() => setActivePanel('none')}
-          className="text-xl cursor-pointer"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        <button onClick={() => setActivePanel('none')} className="text-xl cursor-pointer" style={{ color: 'var(--text-muted)' }}>
           ✕
         </button>
       </div>
 
       <Card className="mb-4">
         <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-          Ask questions about the knowledge graph. The system traverses nodes and edges to find relevant answers.
+          Ask questions about the knowledge graph. The LLM traverses nodes and edges to find relevant answers.
         </p>
         <textarea
           value={query}
@@ -141,16 +127,24 @@ export function QueryPanel() {
         </div>
       </Card>
 
+      {error && (
+        <Card className="mb-4" style={{ borderColor: 'var(--bio-red)', border: '1px solid var(--bio-red)' }}>
+          <p className="text-sm" style={{ color: 'var(--bio-red)' }}>{error}</p>
+        </Card>
+      )}
+
       {response && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card>
-            <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--bio-purple)' }}>
-              Answer
-            </h4>
-            <div
-              className="text-sm leading-relaxed whitespace-pre-wrap"
-              style={{ color: 'var(--text-primary)' }}
-            >
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold" style={{ color: 'var(--bio-purple)' }}>Answer</h4>
+              {usedModel && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-glass)', color: 'var(--text-muted)' }}>
+                  {usedModel}
+                </span>
+              )}
+            </div>
+            <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
               {response}
             </div>
           </Card>
@@ -166,10 +160,7 @@ export function QueryPanel() {
                   if (!node) return null;
                   return (
                     <div key={id} className="flex items-center gap-2 text-xs">
-                      <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: getNodeColor(node.type) }}
-                      />
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: getNodeColor(node.type) }} />
                       <span style={{ color: 'var(--text-primary)' }}>{node.title}</span>
                       <span style={{ color: 'var(--text-muted)' }}>({node.type})</span>
                     </div>
@@ -182,23 +173,4 @@ export function QueryPanel() {
       )}
     </motion.div>
   );
-}
-
-// Import getNodeColor for referenced nodes section
-function getNodeColor(type: string): string {
-  const colors: Record<string, string> = {
-    claim: '#00f5d4',
-    question: '#f15bb5',
-    decision: '#7b2ff7',
-    evidence: '#00ff87',
-    branch: '#fee440',
-    synthesis: '#00f5d4',
-    deliberation: '#ff9f1c',
-    constraint: '#ff6b6b',
-    assumption: '#f15bb5',
-    insight: '#00f5d4',
-    artifact: '#7b2ff7',
-    fact: '#00ff87',
-  };
-  return colors[type] ?? '#00f5d4';
 }
