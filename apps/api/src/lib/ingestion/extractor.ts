@@ -92,6 +92,14 @@ export function detectFormat(text: string): InputFormat {
 
 // --- LLM call ---
 
+export class IngestionConfigError extends Error {
+  readonly code = 'OPENROUTER_UNCONFIGURED' as const;
+  constructor(message: string) {
+    super(message);
+    this.name = 'IngestionConfigError';
+  }
+}
+
 async function callLLM(
   prompt: string,
   model: string
@@ -99,7 +107,7 @@ async function callLLM(
   const apiKey = getOpenRouterKey();
 
   if (!apiKey) {
-    throw new Error(
+    throw new IngestionConfigError(
       'OPENROUTER_API_KEY not configured. Ingestion requires a real LLM call; the previous canned-response fallback was removed in phase-0 cleanup.',
     );
   }
@@ -265,7 +273,8 @@ function buildGraph(
       (p) => p.id === (node as any)._extractionId
     );
     if (extNode) {
-      node.dependsOn = (extNode.dependsOn ?? [])
+      const deps = Array.isArray(extNode.dependsOn) ? extNode.dependsOn : [];
+      node.dependsOn = deps
         .map((d) => extIdToInosId.get(d))
         .filter(Boolean) as string[];
     }

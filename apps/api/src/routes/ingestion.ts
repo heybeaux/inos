@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { extractAndBuildGraph } from '../lib/ingestion/extractor.js';
+import { extractAndBuildGraph, IngestionConfigError } from '../lib/ingestion/extractor.js';
 
 const ingestSchema = z.object({
   text: z.string().min(1, 'text is required'),
@@ -60,8 +60,8 @@ route.post('/api/ingest', async (c) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[ingestion] Error:', message);
-    if (message.startsWith('OPENROUTER_API_KEY not configured')) {
-      return c.json({ error: message }, 503);
+    if (err instanceof IngestionConfigError) {
+      return c.json({ error: message, code: err.code }, 503);
     }
     return c.json({ error: `Ingestion failed: ${message}` }, 500);
   }
