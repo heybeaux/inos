@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { extractAndBuildGraph, IngestionConfigError } from '../lib/ingestion/extractor.js';
+import {
+  extractAndBuildGraph,
+  ExtractionSchemaError,
+  IngestionConfigError,
+} from '../lib/ingestion/extractor.js';
 
 const ingestSchema = z.object({
   text: z.string().min(1, 'text is required'),
@@ -22,6 +26,7 @@ const statsSchema = z.object({
   factsExtracted: z.number(),
   decisionsExtracted: z.number(),
   questionsExtracted: z.number(),
+  edgesDropped: z.number(),
 });
 
 const route = new Hono();
@@ -62,6 +67,10 @@ route.post('/api/ingest', async (c) => {
     console.error('[ingestion] Error:', message);
     if (err instanceof IngestionConfigError) {
       return c.json({ error: message, code: err.code }, 503);
+    }
+    if (err instanceof ExtractionSchemaError) {
+      // Surface the typed code for the client; keep payload off the wire.
+      return c.json({ error: message, code: err.code }, 502);
     }
     return c.json({ error: `Ingestion failed: ${message}` }, 500);
   }

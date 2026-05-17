@@ -20,12 +20,17 @@ import type {
 } from '@heybeaux/inos-types';
 import { buildExtractionPrompt } from './prompts.js';
 import { forceLayout } from './layout.js';
+import {
+  ExtractionSchemaError,
+  validateExtractionResult,
+  type ValidatedExtractionResult,
+} from './schema.js';
 import type {
   InputFormat,
-  ExtractionResult,
-  ExtractedNode,
   IngestStats,
 } from './types.js';
+
+export { ExtractionSchemaError } from './schema.js';
 
 // --- Configuration ---
 
@@ -100,9 +105,13 @@ export class IngestionConfigError extends Error {
   }
 }
 
+const BASE_SYSTEM_PROMPT =
+  'You are a JSON-only reasoning-graph extractor. Output ONLY valid JSON. No markdown, no explanation.';
+
 async function callLLM(
   prompt: string,
-  model: string
+  model: string,
+  extraSystem?: string,
 ): Promise<string> {
   const apiKey = getOpenRouterKey();
 
@@ -111,6 +120,10 @@ async function callLLM(
       'OPENROUTER_API_KEY not configured. Ingestion requires a real LLM call; the previous canned-response fallback was removed in phase-0 cleanup.',
     );
   }
+
+  const systemContent = extraSystem
+    ? `${BASE_SYSTEM_PROMPT}\n\n${extraSystem}`
+    : BASE_SYSTEM_PROMPT;
 
   const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
@@ -123,11 +136,7 @@ async function callLLM(
     body: JSON.stringify({
       model,
       messages: [
-        {
-          role: 'system',
-          content:
-            'You are a JSON-only reasoning-graph extractor. Output ONLY valid JSON. No markdown, no explanation.',
-        },
+        { role: 'system', content: systemContent },
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
@@ -157,70 +166,100 @@ async function callLLM(
 
 // --- Parse LLM response ---
 
-function parseExtractionResult(raw: string): ExtractionResult {
-  // Try to extract JSON from possible markdown code blocks
+/**
+ * Strip markdown fences and parse JSON. Returns the raw (jsonStr) for
+ * inclusion in `ExtractionSchemaError.rawPayload` on validation failure.
+ */
+function stripFencesAndParse(raw: string): {
+  parsedJson: unknown;
+  jsonStr: string;
+} {
   let jsonStr = raw.trim();
 
-  // Strip markdown code fences
   const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch) {
     jsonStr = codeBlockMatch[1].trim();
   }
 
-  const parsed = JSON.parse(jsonStr) as Partial<ExtractionResult>;
+  const parsedJson: unknown = JSON.parse(jsonStr);
+  return { parsedJson, jsonStr };
+}
 
-  if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
-    throw new Error('LLM response missing "nodes" array');
-  }
-  if (!parsed.edges || !Array.isArray(parsed.edges)) {
-    throw new Error('LLM response missing "edges" array');
+interface ParseOutcome {
+  result: ValidatedExtractionResult;
+  edgesDropped: number;
+}
+
+function parseExtractionResult(raw: string): ParseOutcome {
+  let parsedJson: unknown;
+  let jsonStr: string;
+  try {
+    ({ parsedJson, jsonStr } = stripFencesAndParse(raw));
+  } catch (err: unknown) {
+    // JSON.parse failure is also a schema violation from the caller's POV.
+    const message = err instanceof Error ? err.message : String(err);
+    throw new ExtractionSchemaError(
+      [{ path: [], message: `invalid JSON: ${message}`, code: 'custom' }],
+      raw.slice(0, 2048),
+    );
   }
 
-  // Validate node ids are unique
-  const ids = new Set<string>();
-  for (const node of parsed.nodes) {
-    if (!node.id || ids.has(node.id)) {
-      throw new Error(`Duplicate or missing node id: ${node.id}`);
-    }
-    ids.add(node.id);
-  }
-
-  return {
-    nodes: parsed.nodes,
-    edges: parsed.edges,
-    canvasName: parsed.canvasName || 'Imported Canvas',
-    summary: parsed.summary || '',
-  };
+  const { result, edgesDropped } = validateExtractionResult(parsedJson, {
+    rawPayload: jsonStr,
+  });
+  return { result, edgesDropped };
 }
 
 // --- Build InosGraph from extraction ---
 
+function makeAuthor(authorLabel: string): NodeAuthor {
+  if (authorLabel === 'AI' || authorLabel === 'Unknown') {
+    return { type: 'agent', agentId: 'inos-ingestion', model: 'simulated' };
+  }
+  return {
+    type: 'human',
+    userId: `ingested-${authorLabel.toLowerCase().replace(/\s+/g, '-')}`,
+    displayName: authorLabel,
+  };
+}
+
 function buildGraph(
-  result: ExtractionResult,
-  positionedNodes: ReturnType<typeof forceLayout>
+  result: ValidatedExtractionResult,
+  positionedNodes: ReturnType<
+    typeof forceLayout<ValidatedExtractionResult['nodes'][number], ValidatedExtractionResult['edges'][number]>
+  >,
 ): InosGraph {
   const now = new Date().toISOString();
   const canvasId = uuidv4();
   const systemAuthor: NodeAuthor = { type: 'system', source: 'ingestion' };
 
-  // Map ExtractedNode → InosNode
-  const nodes: InosNode[] = positionedNodes.map((pn) => {
-    const stringContent = pn.content;
-    const author: NodeAuthor =
-      pn.author === 'AI' || pn.author === 'Unknown'
-        ? { type: 'agent', agentId: 'inos-ingestion', model: 'simulated' }
-        : { type: 'human', userId: `ingested-${pn.author.toLowerCase().replace(/\s+/g, '-')}`, displayName: pn.author };
+  // First pass: assign InosNode uuids and build extraction-id -> uuid map.
+  const extIdToInosId = new Map<string, string>();
+  for (const pn of positionedNodes) {
+    extIdToInosId.set(pn.id, uuidv4());
+  }
 
-    return {
-      id: uuidv4(),
+  // Second pass: construct InosNodes with fully-resolved dependsOn (uuids).
+  const nodes: InosNode[] = positionedNodes.map((pn) => {
+    const newId = extIdToInosId.get(pn.id);
+    if (!newId) {
+      // Unreachable: we just populated it above. Defensive only.
+      throw new Error(`internal: no uuid for extraction id ${pn.id}`);
+    }
+    const resolvedDeps = pn.dependsOn
+      .map((d) => extIdToInosId.get(d))
+      .filter((d): d is string => typeof d === 'string');
+
+    const base: InosNode = {
+      id: newId,
       type: pn.type,
       title: pn.title,
-      content: stringContent,
-      author,
+      content: pn.content,
+      author: makeAuthor(pn.author),
       createdAt: now,
       updatedAt: now,
       visits: [],
-      dependsOn: [], // will be resolved below
+      dependsOn: resolvedDeps,
       staleness: {
         state: 'fresh',
         evaluatedAt: now,
@@ -230,59 +269,38 @@ function buildGraph(
       status: 'fresh',
       tags: ['ingested'],
       schemaVersion: '1.0.0',
-      // Store original extraction id for edge resolution
-      _extractionId: pn.id,
-      // Store fact key if present
-      ...(pn.factKey ? { engramMemoryId: pn.factKey } : {}),
-    } as InosNode & { _extractionId: string };
+    };
+    if (pn.factKey) {
+      base.engramMemoryId = pn.factKey;
+    }
+    return base;
   });
 
-  // Build id map for edge resolution
-  const extIdToInosId = new Map<string, string>();
-  for (const node of nodes) {
-    extIdToInosId.set((node as any)._extractionId, node.id);
-  }
-
-  // Map ExtractedEdge → InosEdge
-  const edgeResults = result.edges
-    .map((re) => {
-      const sourceId = extIdToInosId.get(re.source);
-      const targetId = extIdToInosId.get(re.target);
-      if (!sourceId || !targetId) return null;
-
-      const edge: InosEdge = {
-        id: uuidv4(),
-        type: re.type as InosEdge['type'],
-        sourceId,
-        targetId,
-        label: re.label ?? undefined,
-        createdAt: now,
-        author: systemAuthor,
-        canvasId,
-        schemaVersion: '1.0.0',
-      };
-      return edge;
-    })
-    .filter((e): e is InosEdge => e !== null);
-
-  const edges: InosEdge[] = edgeResults;
-
-  // Resolve dependsOn on nodes
-  for (const node of nodes) {
-    const extNode = positionedNodes.find(
-      (p) => p.id === (node as any)._extractionId
-    );
-    if (extNode) {
-      const deps = Array.isArray(extNode.dependsOn) ? extNode.dependsOn : [];
-      node.dependsOn = deps
-        .map((d) => extIdToInosId.get(d))
-        .filter(Boolean) as string[];
+  // Edges: extraction has already been validated to only reference known
+  // ids, so .get(...) lookups are guaranteed defined. We still narrow
+  // explicitly to avoid any `!` assertions.
+  const edges: InosEdge[] = [];
+  for (const re of result.edges) {
+    const sourceId = extIdToInosId.get(re.source);
+    const targetId = extIdToInosId.get(re.target);
+    if (!sourceId || !targetId) {
+      // Should never happen post-validation, but skip silently if it does.
+      continue;
     }
-    // Clean up internal field
-    delete (node as any)._extractionId;
+    const edge: InosEdge = {
+      id: uuidv4(),
+      type: re.type,
+      sourceId,
+      targetId,
+      label: re.label,
+      createdAt: now,
+      author: systemAuthor,
+      canvasId,
+      schemaVersion: '1.0.0',
+    };
+    edges.push(edge);
   }
 
-  // Build canvas
   const canvas: Canvas = {
     id: canvasId,
     name: result.canvasName,
@@ -307,13 +325,14 @@ function buildGraph(
 
 // --- Compute stats ---
 
-function computeStats(graph: InosGraph): IngestStats {
+function computeStats(graph: InosGraph, edgesDropped: number): IngestStats {
   return {
     nodesExtracted: graph.nodes.length,
     edgesExtracted: graph.edges.length,
     factsExtracted: graph.nodes.filter((n) => n.type === 'fact').length,
     decisionsExtracted: graph.nodes.filter((n) => n.type === 'decision').length,
     questionsExtracted: graph.nodes.filter((n) => n.type === 'question').length,
+    edgesDropped,
   };
 }
 
@@ -327,6 +346,19 @@ export interface IngestOptions {
   extractFacts?: boolean;
   extractAssumptions?: boolean;
   extractDecisions?: boolean;
+}
+
+function buildRetrySystemMessage(err: ExtractionSchemaError): string {
+  return [
+    'Your previous response failed schema validation. Issues:',
+    err.summaryForLLM(),
+    '',
+    'Return the SAME extraction in valid JSON matching the schema.',
+    'Use ONLY these node types: claim, question, decision, evidence, fact, assumption.',
+    'Use ONLY these edge types: supports, challenges, diverges, depends_on, refines, references.',
+    'Every edge.source and edge.target MUST match an existing node.id.',
+    'Every node MUST have a unique id, a non-empty title, and a dependsOn array (empty if none).',
+  ].join('\n');
 }
 
 export async function extractAndBuildGraph(
@@ -353,16 +385,34 @@ export async function extractAndBuildGraph(
     `[ingestion] Calling LLM: model=${model}, format=${format}, textLen=${text.length}`
   );
 
-  const rawResponse = await callLLM(prompt, model);
-  const extraction = parseExtractionResult(rawResponse);
+  // First attempt.
+  let parseOutcome: ParseOutcome;
+  try {
+    const rawResponse = await callLLM(prompt, model);
+    parseOutcome = parseExtractionResult(rawResponse);
+  } catch (err: unknown) {
+    if (err instanceof ExtractionSchemaError) {
+      console.warn(
+        `[ingestion] Schema validation failed on first pass; retrying once. issues=${err.issues.length}`,
+      );
+      // One-shot retry with error summary embedded in the system prompt.
+      const retryRaw = await callLLM(prompt, model, buildRetrySystemMessage(err));
+      // If this throws ExtractionSchemaError again, surface to caller (-> 502 in route).
+      parseOutcome = parseExtractionResult(retryRaw);
+    } else {
+      throw err;
+    }
+  }
+
+  const { result: extraction, edgesDropped } = parseOutcome;
 
   console.log(
-    `[ingestion] Extracted ${extraction.nodes.length} nodes, ${extraction.edges.length} edges`
+    `[ingestion] Extracted ${extraction.nodes.length} nodes, ${extraction.edges.length} edges (dropped ${edgesDropped})`
   );
 
   const positionedNodes = forceLayout(extraction.nodes, extraction.edges);
   const graph = buildGraph(extraction, positionedNodes);
-  const stats = computeStats(graph);
+  const stats = computeStats(graph, edgesDropped);
 
   return { graph, stats };
 }

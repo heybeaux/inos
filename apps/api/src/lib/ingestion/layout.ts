@@ -9,7 +9,19 @@
  * Good enough for initial placement; the frontend can refine with d3-force-3d.
  */
 
-import type { ExtractedNode, ExtractedEdge, PositionedNode } from './types.js';
+/**
+ * Layout only needs `id` from each node and `source`/`target` from each
+ * edge. We accept structurally-minimal generics so this works for both
+ * the legacy `ExtractedNode` shape and the new `ValidatedExtractionNode`
+ * from `schema.ts` without forcing a cast.
+ */
+interface LayoutNodeLike {
+  id: string;
+}
+interface LayoutEdgeLike {
+  source: string;
+  target: string;
+}
 
 interface Vec3 {
   x: number;
@@ -61,12 +73,12 @@ function randomPosition(): Vec3 {
 
 /**
  * Run force-directed layout on extracted nodes and edges.
- * Returns nodes with { x, y, z } positions.
+ * Returns nodes with { x, y, z } positions (preserves all input fields).
  */
-export function forceLayout(
-  nodes: ExtractedNode[],
-  edges: ExtractedEdge[]
-): PositionedNode[] {
+export function forceLayout<
+  N extends LayoutNodeLike,
+  E extends LayoutEdgeLike,
+>(nodes: N[], edges: E[]): (N & { x: number; y: number; z: number })[] {
   if (nodes.length === 0) return [];
 
   // Initialize positions randomly

@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-05-17T05:03:54.619Z",
-  "finishedAt": "2026-05-17T05:13:47.811Z",
+  "startedAt": "2026-05-17T05:39:27.876Z",
+  "finishedAt": "2026-05-17T05:49:36.717Z",
   "config": {
     "apiUrl": "http://localhost:4000",
     "passes": 2,
@@ -18,7 +18,7 @@
         {
           "pass": 1,
           "nodesExtracted": 21,
-          "edgesExtracted": 30,
+          "edgesExtracted": 31,
           "nodeRecall": 0.14285714285714285,
           "edgePrecision": 0,
           "schemaValid": true,
@@ -40,26 +40,26 @@
             "constraint-data-growth",
             "reversal-condition"
           ],
-          "spuriousEdgeCount": 30,
-          "durationMs": 57549
+          "spuriousEdgeCount": 31,
+          "durationMs": 54909
         },
         {
           "pass": 2,
-          "nodesExtracted": 21,
-          "edgesExtracted": 24,
-          "nodeRecall": 0.21428571428571427,
+          "nodesExtracted": 17,
+          "edgesExtracted": 23,
+          "nodeRecall": 0.2857142857142857,
           "edgePrecision": 0,
           "schemaValid": true,
           "matchedNodeIds": [
             "fact-redshift-cost",
-            "claim-snowflake-faster",
+            "fact-rollup-scan",
+            "fact-cluster-config",
             "decision-fix-schema"
           ],
           "missedNodeIds": [
             "q-migrate-snowflake",
             "fact-p95-28s",
-            "fact-cluster-config",
-            "fact-rollup-scan",
+            "claim-snowflake-faster",
             "assumption-real-problem-warehouse",
             "insight-schema-is-problem",
             "opt-fix-schema",
@@ -68,15 +68,15 @@
             "constraint-data-growth",
             "reversal-condition"
           ],
-          "spuriousEdgeCount": 24,
-          "durationMs": 49648
+          "spuriousEdgeCount": 23,
+          "durationMs": 49516
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.17857142857142855,
+        "avgNodeRecall": 0.21428571428571427,
         "avgEdgePrecision": 0,
         "schemaValidRate": 1,
-        "avgDurationMs": 53598.5
+        "avgDurationMs": 52212.5
       },
       "deterministic": false
     },
@@ -86,39 +86,39 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 27,
-          "edgesExtracted": 28,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.10714285714285714,
+          "nodesExtracted": 28,
+          "edgesExtracted": 33,
+          "nodeRecall": 0.4,
+          "edgePrecision": 0.06060606060606061,
           "schemaValid": true,
           "matchedNodeIds": [
             "fact-desktop-tied",
             "fact-lcp-gap",
             "fact-stripe-error-rate",
             "h1-itp-storage",
-            "h2-lcp-rage-quit",
-            "decision-applepay-holdout",
-            "open-q-fix"
+            "open-q-fix",
+            "decision-applepay-holdout"
           ],
           "missedNodeIds": [
             "q-safari-conversion-drop",
             "fact-safari-conversion",
             "fact-applepay-launch",
+            "h2-lcp-rage-quit",
             "h3-applepay-silent-fail",
             "h4-low-intent-traffic",
             "challenge-h2-funnel-shape",
             "challenge-h4-utm-stable",
             "assumption-server-side-fine"
           ],
-          "spuriousEdgeCount": 25,
-          "durationMs": 64378
+          "spuriousEdgeCount": 31,
+          "durationMs": 52265
         },
         {
           "pass": 2,
-          "nodesExtracted": 28,
+          "nodesExtracted": 31,
           "edgesExtracted": 36,
           "nodeRecall": 0.4,
-          "edgePrecision": 0.05555555555555555,
+          "edgePrecision": 0.027777777777777776,
           "schemaValid": true,
           "matchedNodeIds": [
             "fact-desktop-tied",
@@ -139,17 +139,17 @@
             "challenge-h4-utm-stable",
             "assumption-server-side-fine"
           ],
-          "spuriousEdgeCount": 34,
-          "durationMs": 69894
+          "spuriousEdgeCount": 35,
+          "durationMs": 54101
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.43333333333333335,
-        "avgEdgePrecision": 0.08134920634920634,
+        "avgNodeRecall": 0.4,
+        "avgEdgePrecision": 0.04419191919191919,
         "schemaValidRate": 1,
-        "avgDurationMs": 67136
+        "avgDurationMs": 53183
       },
-      "deterministic": false
+      "deterministic": true
     },
     {
       "fixtureId": "03-decision-journal",
@@ -157,20 +157,20 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 21,
-          "edgesExtracted": 25,
-          "nodeRecall": 0.35714285714285715,
-          "edgePrecision": 0.12,
+          "nodesExtracted": 22,
+          "edgesExtracted": 26,
+          "nodeRecall": 0.2857142857142857,
+          "edgePrecision": 0.07692307692307693,
           "schemaValid": true,
           "matchedNodeIds": [
             "decision-rebuild",
-            "fact-activation-rate",
             "fact-solo-usage",
             "fact-ttf-canvas",
             "assumption-need-invite-step"
           ],
           "missedNodeIds": [
             "q-keep-or-rebuild",
+            "fact-activation-rate",
             "fact-invite-drop",
             "insight-positioning-mismatch",
             "opt-a-remove-invite",
@@ -180,15 +180,15 @@
             "reversal-conditions",
             "open-q-teammate-path"
           ],
-          "spuriousEdgeCount": 22,
-          "durationMs": 53856
+          "spuriousEdgeCount": 24,
+          "durationMs": 56711
         },
         {
           "pass": 2,
           "nodesExtracted": 20,
-          "edgesExtracted": 22,
+          "edgesExtracted": 27,
           "nodeRecall": 0.35714285714285715,
-          "edgePrecision": 0.09090909090909091,
+          "edgePrecision": 0.14814814814814814,
           "schemaValid": true,
           "matchedNodeIds": [
             "decision-rebuild",
@@ -208,17 +208,17 @@
             "reversal-conditions",
             "open-q-teammate-path"
           ],
-          "spuriousEdgeCount": 20,
-          "durationMs": 52395
+          "spuriousEdgeCount": 23,
+          "durationMs": 53555
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.35714285714285715,
-        "avgEdgePrecision": 0.10545454545454545,
+        "avgNodeRecall": 0.3214285714285714,
+        "avgEdgePrecision": 0.11253561253561253,
         "schemaValidRate": 1,
-        "avgDurationMs": 53125.5
+        "avgDurationMs": 55133
       },
-      "deterministic": true
+      "deterministic": false
     },
     {
       "fixtureId": "04-self-debate",
@@ -226,39 +226,10 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 22,
-          "edgesExtracted": 27,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.18518518518518517,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "claim-recruiting-magnet",
-            "claim-schelling-point",
-            "claim-algorithm-is-product",
-            "challenge-algorithm-not-product",
-            "claim-restrictive-license",
-            "claim-open-boring-80",
-            "decision-write-blog-posts"
-          ],
-          "missedNodeIds": [
-            "q-open-source",
-            "refine-median-competitor",
-            "challenge-license-worst-of-both",
-            "challenge-boring-not-interesting",
-            "assumption-primitives-are-interesting",
-            "branch-revisit-at-series-b",
-            "branch-fast-follow-competitor",
-            "meta-risk-aversion"
-          ],
-          "spuriousEdgeCount": 22,
-          "durationMs": 56609
-        },
-        {
-          "pass": 2,
           "nodesExtracted": 21,
           "edgesExtracted": 25,
           "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.12,
+          "edgePrecision": 0.16,
           "schemaValid": true,
           "matchedNodeIds": [
             "claim-recruiting-magnet",
@@ -279,15 +250,44 @@
             "branch-fast-follow-competitor",
             "meta-risk-aversion"
           ],
-          "spuriousEdgeCount": 22,
-          "durationMs": 56284
+          "spuriousEdgeCount": 21,
+          "durationMs": 45614
+        },
+        {
+          "pass": 2,
+          "nodesExtracted": 22,
+          "edgesExtracted": 25,
+          "nodeRecall": 0.4666666666666667,
+          "edgePrecision": 0.04,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "claim-recruiting-magnet",
+            "claim-schelling-point",
+            "claim-algorithm-is-product",
+            "challenge-algorithm-not-product",
+            "claim-restrictive-license",
+            "claim-open-boring-80",
+            "decision-write-blog-posts"
+          ],
+          "missedNodeIds": [
+            "q-open-source",
+            "refine-median-competitor",
+            "challenge-license-worst-of-both",
+            "challenge-boring-not-interesting",
+            "assumption-primitives-are-interesting",
+            "branch-revisit-at-series-b",
+            "branch-fast-follow-competitor",
+            "meta-risk-aversion"
+          ],
+          "spuriousEdgeCount": 24,
+          "durationMs": 55402
         }
       ],
       "aggregate": {
         "avgNodeRecall": 0.4666666666666667,
-        "avgEdgePrecision": 0.15259259259259259,
+        "avgEdgePrecision": 0.1,
         "schemaValidRate": 1,
-        "avgDurationMs": 56446.5
+        "avgDurationMs": 50508
       },
       "deterministic": true
     },
@@ -297,20 +297,20 @@
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 22,
-          "edgesExtracted": 26,
-          "nodeRecall": 0.1875,
-          "edgePrecision": 0.038461538461538464,
+          "nodesExtracted": 14,
+          "edgesExtracted": 18,
+          "nodeRecall": 0.25,
+          "edgePrecision": 0.05555555555555555,
           "schemaValid": true,
           "matchedNodeIds": [
             "fact-ld-pricing",
+            "fact-build-estimate",
             "decision-buy-launchdarkly",
             "open-q-growthbook"
           ],
           "missedNodeIds": [
             "q-build-vs-buy",
             "fact-current-flag-state",
-            "fact-build-estimate",
             "claim-build-cheaper",
             "claim-need-only-basics",
             "assumption-low-flag-velocity",
@@ -322,29 +322,29 @@
             "insight-2x-multiplier",
             "reversal-conditions"
           ],
-          "spuriousEdgeCount": 25,
-          "durationMs": 64308
+          "spuriousEdgeCount": 17,
+          "durationMs": 118257
         },
         {
           "pass": 2,
-          "nodesExtracted": 24,
-          "edgesExtracted": 26,
-          "nodeRecall": 0.25,
-          "edgePrecision": 0.038461538461538464,
+          "nodesExtracted": 21,
+          "edgesExtracted": 29,
+          "nodeRecall": 0.1875,
+          "edgePrecision": 0.034482758620689655,
           "schemaValid": true,
           "matchedNodeIds": [
-            "fact-ld-pricing",
-            "fact-build-estimate",
+            "challenge-streaming-complexity",
             "decision-buy-launchdarkly",
             "open-q-growthbook"
           ],
           "missedNodeIds": [
             "q-build-vs-buy",
             "fact-current-flag-state",
+            "fact-ld-pricing",
+            "fact-build-estimate",
             "claim-build-cheaper",
             "claim-need-only-basics",
             "assumption-low-flag-velocity",
-            "challenge-streaming-complexity",
             "challenge-audit-soc2",
             "challenge-targeting-complexity",
             "tentative-build-position",
@@ -352,30 +352,30 @@
             "insight-2x-multiplier",
             "reversal-conditions"
           ],
-          "spuriousEdgeCount": 25,
-          "durationMs": 68266
+          "spuriousEdgeCount": 28,
+          "durationMs": 68501
         }
       ],
       "aggregate": {
         "avgNodeRecall": 0.21875,
-        "avgEdgePrecision": 0.038461538461538464,
+        "avgEdgePrecision": 0.045019157088122604,
         "schemaValidRate": 1,
-        "avgDurationMs": 66287
+        "avgDurationMs": 93379
       },
       "deterministic": false
     }
   ],
   "passed": false,
   "failures": [
-    "01-ai-conversation-log: nodeRecall 0.179 < 0.85",
+    "01-ai-conversation-log: nodeRecall 0.214 < 0.85",
     "01-ai-conversation-log: edgePrecision 0.000 < 0.8",
-    "02-research-notes: nodeRecall 0.433 < 0.85",
-    "02-research-notes: edgePrecision 0.081 < 0.8",
-    "03-decision-journal: nodeRecall 0.357 < 0.85",
-    "03-decision-journal: edgePrecision 0.105 < 0.8",
+    "02-research-notes: nodeRecall 0.400 < 0.85",
+    "02-research-notes: edgePrecision 0.044 < 0.8",
+    "03-decision-journal: nodeRecall 0.321 < 0.85",
+    "03-decision-journal: edgePrecision 0.113 < 0.8",
     "04-self-debate: nodeRecall 0.467 < 0.85",
-    "04-self-debate: edgePrecision 0.153 < 0.8",
+    "04-self-debate: edgePrecision 0.100 < 0.8",
     "05-messy-markdown: nodeRecall 0.219 < 0.85",
-    "05-messy-markdown: edgePrecision 0.038 < 0.8"
+    "05-messy-markdown: edgePrecision 0.045 < 0.8"
   ]
 }

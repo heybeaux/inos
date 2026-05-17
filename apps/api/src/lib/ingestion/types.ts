@@ -85,6 +85,8 @@ export interface IngestStats {
   factsExtracted: number;
   decisionsExtracted: number;
   questionsExtracted: number;
+  /** Edges dropped by the validator for referencing unknown node ids. */
+  edgesDropped: number;
 }
 
 export interface IngestResponse {
