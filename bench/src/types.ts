@@ -55,6 +55,16 @@ export interface PassMetrics {
   missedNodeIds: string[];
   spuriousEdgeCount: number;
   durationMs: number;
+  /**
+   * Of matched nodes, the fraction whose `sourceSpan.excerpt` is verifiably
+   * a substring of the original fixture text. -1 if no matched nodes exist
+   * (cannot compute coverage).
+   */
+  spanCoverage: number;
+  /** Matched nodes that had a sourceSpan (regardless of verification). */
+  matchedNodesWithSpan: number;
+  /** Matched nodes whose sourceSpan.excerpt verified as a substring. */
+  matchedNodesWithVerifiedSpan: number;
 }
 
 export interface AggregateMetrics {
@@ -62,6 +72,7 @@ export interface AggregateMetrics {
   avgEdgePrecision: number;
   schemaValidRate: number;
   avgDurationMs: number;
+  avgSpanCoverage: number;
 }
 
 export interface BenchConfig {

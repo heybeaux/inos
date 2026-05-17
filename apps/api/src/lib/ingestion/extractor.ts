@@ -43,6 +43,7 @@ import {
   validateExtractionResult,
   type ValidatedExtractionResult,
 } from './schema.js';
+import { resolveSourceSpan, emptyResolveStats } from './sourceSpan.js';
 import type {
   InputFormat,
   ExtractionResult,
@@ -395,6 +396,8 @@ interface RawNode {
   content: string;
   author?: string;
   factKey?: string;
+  /** P1.3: verbatim source excerpt the LLM was asked to emit per node. */
+  excerpt?: string;
 }
 
 interface RawEdge {
@@ -444,6 +447,7 @@ function coerceNode(raw: RawNode): ExtractedNode | null {
     author: String(raw.author ?? 'Author'),
     dependsOn: [],
     ...(raw.factKey ? { factKey: String(raw.factKey) } : {}),
+    ...(raw.excerpt ? { excerpt: String(raw.excerpt) } : {}),
   };
 }
 
@@ -717,10 +721,12 @@ function buildGraph(
       ValidatedExtractionResult['edges'][number]
     >
   >,
+  originalText: string,
 ): InosGraph {
   const now = new Date().toISOString();
   const canvasId = uuidv4();
   const systemAuthor: NodeAuthor = { type: 'system', source: 'ingestion' };
+  const resolveStats = emptyResolveStats();
 
   // First pass: assign InosNode uuids and build extraction-id -> uuid map.
   const extIdToInosId = new Map<string, string>();
@@ -728,7 +734,10 @@ function buildGraph(
     extIdToInosId.set(pn.id, uuidv4());
   }
 
-  // Second pass: construct InosNodes with fully-resolved dependsOn (uuids).
+  // Second pass: construct InosNodes with fully-resolved dependsOn (uuids)
+  // and resolved source spans (from the verbatim excerpt the LLM emitted).
+  // Raw `excerpt` is intentionally NOT copied onto the final InosNode —
+  // only the resolved sourceSpan (with verified offsets) is.
   const nodes: InosNode[] = positionedNodes.map((pn) => {
     const newId = extIdToInosId.get(pn.id);
     if (!newId) {
@@ -738,6 +747,13 @@ function buildGraph(
     const resolvedDeps = pn.dependsOn
       .map((d) => extIdToInosId.get(d))
       .filter((d): d is string => typeof d === 'string');
+
+    let sourceSpan: ReturnType<typeof resolveSourceSpan> = undefined;
+    if (pn.excerpt) {
+      sourceSpan = resolveSourceSpan(originalText, pn.excerpt, resolveStats);
+    } else {
+      resolveStats.unresolved++;
+    }
 
     const base: InosNode = {
       id: newId,
@@ -758,6 +774,7 @@ function buildGraph(
       status: 'fresh',
       tags: ['ingested'],
       schemaVersion: '1.0.0',
+      ...(sourceSpan ? { sourceSpan } : {}),
     };
     if (pn.factKey) {
       base.engramMemoryId = pn.factKey;
@@ -789,6 +806,10 @@ function buildGraph(
     };
     edges.push(edge);
   }
+
+  console.log(
+    `[ingestion] sourceSpan strategy breakdown: exact=${resolveStats.exact} normalized=${resolveStats.normalized} fuzzy=${resolveStats.fuzzy} unresolved=${resolveStats.unresolved}`,
+  );
 
   const canvas: Canvas = {
     id: canvasId,
@@ -822,6 +843,7 @@ function computeStats(graph: InosGraph, edgesDropped: number): IngestStats {
     decisionsExtracted: graph.nodes.filter((n) => n.type === 'decision').length,
     questionsExtracted: graph.nodes.filter((n) => n.type === 'question').length,
     edgesDropped,
+    nodesWithSpan: graph.nodes.filter((n) => n.sourceSpan != null).length,
   };
 }
 
@@ -946,6 +968,7 @@ export async function extractAndBuildGraph(
       'references, replaces, merges, inherits, temporal.',
       'Every edge.source/target MUST match an existing node.id.',
       'Every node MUST have a unique id, type, title, content, author, dependsOn[].',
+      'Each node MAY include an optional "excerpt" field (5-40 word verbatim quote).',
       '',
       'CURRENT (broken) extraction:',
       JSON.stringify(extraction),
@@ -972,7 +995,7 @@ export async function extractAndBuildGraph(
   }
 
   const positionedNodes = forceLayout(validated.nodes, validated.edges);
-  const graph = buildGraph(validated, positionedNodes);
+  const graph = buildGraph(validated, positionedNodes, text);
   const stats = computeStats(graph, edgesDropped);
 
   return { graph, stats };

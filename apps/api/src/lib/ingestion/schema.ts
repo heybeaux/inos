@@ -77,6 +77,10 @@ export const extractionNodeSchema = z.object({
   // Default to [] rather than rejecting; the prompt still asks for it.
   dependsOn: z.array(z.string()).default([]),
   factKey: z.string().optional(),
+  // P1.3 hand-off: verbatim source excerpt (5-40 words). The post-validation
+  // pipeline resolves this into a NodeSourceSpan via `resolveSourceSpan` and
+  // then strips the raw excerpt before constructing the final InosNode.
+  excerpt: z.string().optional(),
 });
 
 export const extractionEdgeSchema = z.object({

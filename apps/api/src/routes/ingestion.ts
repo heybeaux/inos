@@ -27,6 +27,7 @@ const statsSchema = z.object({
   decisionsExtracted: z.number(),
   questionsExtracted: z.number(),
   edgesDropped: z.number(),
+  nodesWithSpan: z.number(),
 });
 
 const route = new Hono();

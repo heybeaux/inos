@@ -46,6 +46,14 @@ export interface VisitRecord {
   action: 'read' | 'edit' | 'branch' | 'merge';
 }
 
+export interface NodeSourceSpan {
+  excerpt: string;       // verbatim source excerpt (5-40 words)
+  startChar: number;     // char offset in original text
+  endChar: number;       // exclusive
+  startLine: number;     // 0-based line, -1 if unknown
+  context?: string;      // "User", "Assistant", "## Section header", etc.
+}
+
 export interface SonderSignature {
   signature: string;
   publicKey: string;
@@ -78,6 +86,7 @@ export interface InosNode {
   status: NodeStatus;
   tags: string[];
   schemaVersion: string;
+  sourceSpan?: NodeSourceSpan;
 }
 
 export type EdgeType =

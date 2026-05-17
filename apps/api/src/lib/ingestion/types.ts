@@ -52,6 +52,8 @@ export interface ExtractedNode {
   dependsOn: string[];
   /** Stable key for fact nodes (e.g. 'hydrothermal_vents_year') */
   factKey?: string;
+  /** Verbatim source excerpt (5-40 words). Offsets are computed post-hoc. */
+  excerpt?: string;
 }
 
 export interface ExtractedEdge {
@@ -103,6 +105,8 @@ export interface IngestStats {
   questionsExtracted: number;
   /** Edges dropped by the validator for referencing unknown node ids. */
   edgesDropped: number;
+  /** Number of nodes that resolved to a verifiable source span. */
+  nodesWithSpan: number;
 }
 
 export interface IngestResponse {

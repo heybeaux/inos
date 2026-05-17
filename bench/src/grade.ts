@@ -58,15 +58,18 @@ export function gradePass(
   durationMs: number,
   graph: InosGraph,
   reference: ReferenceGraph,
+  originalText?: string,
 ): PassMetrics {
   const matched = new Set<string>();
   const matchedNodeIds: string[] = [];
+  const matchedNodes: InosNode[] = [];
 
   for (const ext of graph.nodes) {
     const refId = matchExtractedToReference(ext, reference.nodes, matched);
     if (refId) {
       matched.add(refId);
       matchedNodeIds.push(refId);
+      matchedNodes.push(ext);
     }
   }
 
@@ -77,6 +80,28 @@ export function gradePass(
   const nodeRecall = reference.nodes.length === 0
     ? 1
     : matched.size / reference.nodes.length;
+
+  // --- Span coverage: of matched nodes, fraction whose sourceSpan.excerpt
+  // is verifiably a substring of the original fixture text. ---
+  let matchedNodesWithSpan = 0;
+  let matchedNodesWithVerifiedSpan = 0;
+  const haystack = originalText ?? '';
+  const haystackLower = haystack.toLowerCase();
+  for (const n of matchedNodes) {
+    if (n.sourceSpan && typeof n.sourceSpan.excerpt === 'string') {
+      matchedNodesWithSpan++;
+      if (
+        haystack &&
+        haystackLower.includes(n.sourceSpan.excerpt.toLowerCase())
+      ) {
+        matchedNodesWithVerifiedSpan++;
+      }
+    }
+  }
+  const spanCoverage =
+    matchedNodes.length === 0
+      ? -1
+      : matchedNodesWithVerifiedSpan / matchedNodes.length;
 
   // Edge precision: of edges the extractor emitted, what fraction connect a
   // pair of nodes that both matched reference nodes? (proxy for "real" edges)
@@ -114,6 +139,9 @@ export function gradePass(
     missedNodeIds,
     spuriousEdgeCount: spurious,
     durationMs,
+    spanCoverage,
+    matchedNodesWithSpan,
+    matchedNodesWithVerifiedSpan,
   };
 }
 

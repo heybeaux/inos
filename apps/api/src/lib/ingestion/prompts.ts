@@ -175,6 +175,24 @@ replaces. Default to those.
 `;
 
 // ────────────────────────────────────────────────────────────────────────────
+// P1.3 hand-off — per-node "excerpt" instruction block.
+//
+// Every per-pass prompt that emits nodes (spine, support, recovery)
+// embeds this block at the end of its JSON schema description. The
+// downstream `resolveSourceSpan` resolver tolerates missing excerpts,
+// so the LLM is explicitly told to OMIT rather than fabricate.
+// ────────────────────────────────────────────────────────────────────────────
+
+const EXCERPT_INSTRUCTION = `
+IMPORTANT — the "excerpt" field:
+- For every node, include an "excerpt" containing a VERBATIM, contiguous snippet copied directly from the source text above.
+- Length: 5-40 words. Pick the snippet that most directly supports the node's title/content.
+- Copy character-for-character — same punctuation, capitalization, and spacing as in the source. Do NOT paraphrase, summarize, translate, or invent text.
+- Do NOT include character offsets, line numbers, or any positional metadata — only the excerpt string. Offsets are computed downstream.
+- If you genuinely cannot find a verbatim snippet that supports the node, omit the "excerpt" field for that node rather than fabricating one.
+`;
+
+// ────────────────────────────────────────────────────────────────────────────
 // Format-specific framing — softer than before; the heavy lifting now lives
 // in the per-pass instructions.
 // ────────────────────────────────────────────────────────────────────────────
@@ -303,10 +321,13 @@ export function buildSpinePrompt(
     '      "type": "question|claim|decision|insight|branch",',
     '      "title": "<concrete ≤120 char title>",',
     '      "content": "<lightly cleaned source text>",',
-    '      "author": "<speaker name or Author or AI>"',
+    '      "author": "<speaker name or Author or AI>",',
+    '      "excerpt": "<verbatim 5-40 word snippet from source>"',
     '    }',
     '  ]',
     '}',
+    '',
+    EXCERPT_INSTRUCTION.trim(),
   ].join('\n');
 }
 
@@ -381,10 +402,13 @@ export function buildSupportPrompt(
     '      "title": "<concrete ≤120 char title>",',
     '      "content": "<lightly cleaned source text>",',
     '      "author": "<speaker name or Author or AI>",',
-    '      "factKey": "<optional stable snake_case key for fact nodes>"',
+    '      "factKey": "<optional stable snake_case key for fact nodes>",',
+    '      "excerpt": "<verbatim 5-40 word snippet from source>"',
     '    }',
     '  ]',
     '}',
+    '',
+    EXCERPT_INSTRUCTION.trim(),
   ].join('\n');
 }
 
@@ -511,10 +535,13 @@ export function buildRecoveryPrompt(
     '      "title": "<concrete ≤120 char title>",',
     '      "content": "<source quote>",',
     '      "author": "<speaker name or Author or AI>",',
-    '      "reason": "<brief: why this was missed>"',
+    '      "reason": "<brief: why this was missed>",',
+    '      "excerpt": "<verbatim 5-40 word snippet from source>"',
     '    }',
     '  ]',
     '}',
+    '',
+    EXCERPT_INSTRUCTION.trim(),
   ].join('\n');
 }
 

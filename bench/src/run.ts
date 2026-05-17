@@ -76,19 +76,19 @@ async function runFixture(
           fixtureId: fixture.id,
           passes,
           perPassMetrics: perPass,
-          aggregate: { avgNodeRecall: 0, avgEdgePrecision: 0, schemaValidRate: 0, avgDurationMs: 0 },
+          aggregate: { avgNodeRecall: 0, avgEdgePrecision: 0, schemaValidRate: 0, avgDurationMs: 0, avgSpanCoverage: -1 },
           deterministic: false,
           error: `HTTP ${res.status}: ${body.slice(0, 200)}`,
         };
       }
       const json = (await res.json()) as { graph: import('@heybeaux/inos-types').InosGraph };
-      perPass.push(gradePass(p, durationMs, json.graph, fixture.ref));
+      perPass.push(gradePass(p, durationMs, json.graph, fixture.ref, fixture.text));
     } catch (err) {
       return {
         fixtureId: fixture.id,
         passes,
         perPassMetrics: perPass,
-        aggregate: { avgNodeRecall: 0, avgEdgePrecision: 0, schemaValidRate: 0, avgDurationMs: 0 },
+        aggregate: { avgNodeRecall: 0, avgEdgePrecision: 0, schemaValidRate: 0, avgDurationMs: 0, avgSpanCoverage: -1 },
         deterministic: false,
         error: err instanceof Error ? err.message : String(err),
       };
@@ -99,6 +99,10 @@ async function runFixture(
   const avgEdgePrecision = perPass.reduce((a, b) => a + b.edgePrecision, 0) / perPass.length;
   const schemaValidRate = perPass.filter((p) => p.schemaValid).length / perPass.length;
   const avgDurationMs = perPass.reduce((a, b) => a + b.durationMs, 0) / perPass.length;
+  const coverageSamples = perPass.map((p) => p.spanCoverage).filter((c) => c >= 0);
+  const avgSpanCoverage = coverageSamples.length === 0
+    ? -1
+    : coverageSamples.reduce((a, b) => a + b, 0) / coverageSamples.length;
 
   let deterministic = true;
   for (let i = 1; i < perPass.length; i++) {
@@ -112,7 +116,7 @@ async function runFixture(
     fixtureId: fixture.id,
     passes,
     perPassMetrics: perPass,
-    aggregate: { avgNodeRecall, avgEdgePrecision, schemaValidRate, avgDurationMs },
+    aggregate: { avgNodeRecall, avgEdgePrecision, schemaValidRate, avgDurationMs, avgSpanCoverage },
     deterministic,
   };
 }
@@ -129,10 +133,29 @@ function summarize(report: BenchReport): void {
       continue;
     }
     const a = r.aggregate;
+    const cov = a.avgSpanCoverage < 0 ? 'n/a' : a.avgSpanCoverage.toFixed(2);
     console.log(
-      `  ${r.fixtureId.padEnd(28)} recall=${a.avgNodeRecall.toFixed(2)} prec=${a.avgEdgePrecision.toFixed(2)} schema=${a.schemaValidRate.toFixed(2)} det=${r.deterministic ? 'Y' : 'N'} avgMs=${a.avgDurationMs.toFixed(0)}`,
+      `  ${r.fixtureId.padEnd(28)} recall=${a.avgNodeRecall.toFixed(2)} prec=${a.avgEdgePrecision.toFixed(2)} schema=${a.schemaValidRate.toFixed(2)} spanCov=${cov} det=${r.deterministic ? 'Y' : 'N'} avgMs=${a.avgDurationMs.toFixed(0)}`,
     );
   }
+
+  // Span-coverage spotlight (Phase 1: log prominently, don't fail).
+  console.log('');
+  console.log('--- source-span coverage (matched nodes, verified verbatim) ---');
+  for (const r of report.results) {
+    if (r.error) continue;
+    const cov = r.aggregate.avgSpanCoverage;
+    const tag = cov < 0
+      ? 'NO MATCHED NODES'
+      : cov < 0.5
+        ? '!! LOW'
+        : cov < 0.85
+          ? '!  moderate'
+          : 'ok';
+    const covStr = cov < 0 ? '   n/a' : cov.toFixed(3);
+    console.log(`  ${r.fixtureId.padEnd(28)} spanCoverage=${covStr}  ${tag}`);
+  }
+
   console.log('');
   if (report.passed) console.log('PASSED');
   else {
