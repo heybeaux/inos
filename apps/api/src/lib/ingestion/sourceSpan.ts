@@ -5,18 +5,46 @@
  * character offsets, line numbers, and conversational/section context
  * post-hoc against the ORIGINAL input text (not the model's recall of it).
  *
- * Strategy is layered:
- *   1. Exact case-insensitive substring match
- *   2. Whitespace-normalized match (collapse runs of \s+), mapped back
- *   3. Longest-common-substring fuzzy match (≥20 chars)
+ * Strategy is layered (verbatim → approximate → unresolved):
+ *   1. Exact case-insensitive substring match            -> resolveStrategy='verbatim'
+ *   2. Whitespace-normalized match (collapse \s+)        -> resolveStrategy='verbatim'
+ *   3. Longest-common-substring fuzzy match              -> resolveStrategy='approximate'
+ *      Requires ≥40 chars LCS OR ≥80% needle coverage (issue #19 — the
+ *      old 20-char threshold scored coincidence matches as wins and
+ *      inflated spanCoverage).
  *   4. Give up — return undefined. We never fabricate offsets.
+ *
+ * Issue #19 also exposes `resolveStrategy` on the returned span so the
+ * grader (and any UI surface) can distinguish a high-confidence verbatim
+ * match from a fragile approximate one.
  */
 
 import type { NodeSourceSpan } from '@heybeaux/inos-types';
 
 // --- Public API ---
 
+/**
+ * Internal resolution-strategy taxonomy. We collapse to three classes on
+ * the returned span:
+ *   verbatim    — exact or whitespace-normalized substring of source
+ *   approximate — fuzzy LCS hit that cleared the new ≥40-char / ≥80%
+ *                 needle-coverage threshold
+ *   unresolved  — gave up (no span returned)
+ *
+ * The four-element ResolveStats keeps the original buckets for
+ * observability (so we can see what the old fuzzy threshold WOULD have
+ * accepted vs what we actually returned).
+ */
 export type ResolveStrategy = 'exact' | 'normalized' | 'fuzzy' | 'unresolved';
+export type SpanResolveStrategy = 'verbatim' | 'approximate' | 'unresolved';
+
+/**
+ * Local extension of the shared NodeSourceSpan that adds the strategy tag.
+ * The base type lives in @heybeaux/inos-types and is unchanged.
+ */
+export interface IngestedNodeSourceSpan extends NodeSourceSpan {
+  resolveStrategy: SpanResolveStrategy;
+}
 
 export interface ResolveStats {
   exact: number;
@@ -29,11 +57,19 @@ export function emptyResolveStats(): ResolveStats {
   return { exact: 0, normalized: 0, fuzzy: 0, unresolved: 0 };
 }
 
+// --- Tuning constants (#19) ---
+//
+// Fuzzy match has to clear EITHER of these gates to be returned. The old
+// flat 20-char minimum let coincidence matches through (e.g. a date or a
+// stock phrase that happened to appear in both haystack and needle).
+const FUZZY_MIN_LCS_CHARS = 40;
+const FUZZY_MIN_NEEDLE_COVERAGE = 0.8;
+
 export function resolveSourceSpan(
   originalText: string,
   excerpt: string,
   stats?: ResolveStats,
-): NodeSourceSpan | undefined {
+): IngestedNodeSourceSpan | undefined {
   const tally = (s: ResolveStrategy): void => {
     if (stats) stats[s]++;
   };
@@ -52,21 +88,39 @@ export function resolveSourceSpan(
   const exact = exactMatch(originalText, cleaned);
   if (exact) {
     tally('exact');
-    return finalize(originalText, exact.startChar, exact.endChar);
+    return finalize(originalText, exact.startChar, exact.endChar, 'verbatim');
   }
 
   // 2. Whitespace-normalized match
   const normalized = whitespaceNormalizedMatch(originalText, cleaned);
   if (normalized) {
     tally('normalized');
-    return finalize(originalText, normalized.startChar, normalized.endChar);
+    return finalize(
+      originalText,
+      normalized.startChar,
+      normalized.endChar,
+      'verbatim',
+    );
   }
 
-  // 3. Fuzzy / longest-common-substring fallback (≥20 chars)
-  const fuzzy = fuzzyMatch(originalText, cleaned, 20);
+  // 3. Fuzzy / longest-common-substring fallback. Requires EITHER a long
+  //    enough absolute LCS OR a high fraction of the needle to be in the
+  //    haystack — see FUZZY_MIN_* constants. This is the #19 fix.
+  const fuzzy = fuzzyMatch(originalText, cleaned, FUZZY_MIN_LCS_CHARS);
   if (fuzzy) {
-    tally('fuzzy');
-    return finalize(originalText, fuzzy.startChar, fuzzy.endChar);
+    const coverage = (fuzzy.endChar - fuzzy.startChar) / cleaned.length;
+    const meetsAbsolute =
+      fuzzy.endChar - fuzzy.startChar >= FUZZY_MIN_LCS_CHARS;
+    const meetsCoverage = coverage >= FUZZY_MIN_NEEDLE_COVERAGE;
+    if (meetsAbsolute || meetsCoverage) {
+      tally('fuzzy');
+      return finalize(
+        originalText,
+        fuzzy.startChar,
+        fuzzy.endChar,
+        'approximate',
+      );
+    }
   }
 
   tally('unresolved');
@@ -207,15 +261,17 @@ function finalize(
   originalText: string,
   startChar: number,
   endChar: number,
-): NodeSourceSpan {
+  resolveStrategy: SpanResolveStrategy,
+): IngestedNodeSourceSpan {
   const excerpt = originalText.slice(startChar, endChar);
   const startLine = computeStartLine(originalText, startChar);
   const context = computeContext(originalText, startChar);
-  const span: NodeSourceSpan = {
+  const span: IngestedNodeSourceSpan = {
     excerpt,
     startChar,
     endChar,
     startLine,
+    resolveStrategy,
   };
   if (context) span.context = context;
   return span;

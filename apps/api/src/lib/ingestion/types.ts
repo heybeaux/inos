@@ -107,6 +107,12 @@ export interface IngestStats {
   edgesDropped: number;
   /** Number of nodes that resolved to a verifiable source span. */
   nodesWithSpan: number;
+  /**
+   * Non-fatal warnings surfaced during extraction (e.g. consolidation
+   * timed out after retries, recovery pass failed but earlier passes
+   * succeeded). Empty array on a fully clean run.
+   */
+  parseWarnings?: string[];
 }
 
 export interface IngestResponse {

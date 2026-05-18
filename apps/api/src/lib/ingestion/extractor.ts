@@ -269,6 +269,49 @@ interface LLMCallResult {
   finishReason?: string;
 }
 
+// --- Retry / backoff / timeout ---
+//
+// Issue #13: previously spine / support / edges threw on any non-2xx, so a
+// transient 429 or 502 from OpenRouter killed the whole ingestion. We retry
+// transient failures (429 + 5xx + AbortError + network) with exponential
+// backoff and jitter, and give each call a 90s timeout. Existing
+// recovery+consolidation try/catch fallbacks still apply on top.
+const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_BASE_MS = 1000;
+const RETRY_FACTOR = 2;
+const RETRY_JITTER = 0.2; // ±20%
+const CALL_TIMEOUT_MS = 90_000;
+
+/**
+ * `fetch` is only retried when failure is transient. 4xx other than 429
+ * are permanent (bad request / auth / invalid model) — retrying would just
+ * burn quota.
+ */
+function isRetryableHttpStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function jitteredDelay(attempt: number): number {
+  const base = RETRY_BASE_MS * Math.pow(RETRY_FACTOR, attempt);
+  const jitter = base * RETRY_JITTER * (Math.random() * 2 - 1);
+  return Math.max(0, Math.floor(base + jitter));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Exported for unit testing — overrideable via `__setFetchForTests`.
+ * Defaults to global fetch.
+ */
+let fetchImpl: typeof fetch = (input, init) => fetch(input, init);
+
+/** @internal — tests only */
+export function __setFetchForTests(impl: typeof fetch | null): void {
+  fetchImpl = impl ?? ((input, init) => fetch(input, init));
+}
+
 async function rawOpenRouterCall(opts: {
   apiKey: string;
   model: string;
@@ -276,6 +319,7 @@ async function rawOpenRouterCall(opts: {
   userMessages: Array<{ role: 'user' | 'assistant'; content: string }>;
   maxTokens: number;
   jsonSchema?: { name: string; schema: Record<string, unknown> };
+  label?: string;
 }): Promise<{ content: string; finishReason?: string }> {
   const responseFormat = opts.jsonSchema
     ? {
@@ -288,45 +332,92 @@ async function rawOpenRouterCall(opts: {
       }
     : { type: 'json_object' as const };
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${opts.apiKey}`,
-      'HTTP-Referer': process.env.SITE_URL || 'http://localhost:4000',
-      'X-Title': 'Inos',
-    },
-    body: JSON.stringify({
-      model: opts.model,
-      messages: [
-        { role: 'system', content: opts.systemPrompt },
-        ...opts.userMessages,
-      ],
-      temperature: 0.0,
-      max_tokens: opts.maxTokens,
-      response_format: responseFormat,
-    }),
+  const body = JSON.stringify({
+    model: opts.model,
+    messages: [
+      { role: 'system', content: opts.systemPrompt },
+      ...opts.userMessages,
+    ],
+    temperature: 0.0,
+    max_tokens: opts.maxTokens,
+    response_format: responseFormat,
   });
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(
-      `LLM call failed (${response.status}) model=${opts.model}: ${body.slice(0, 300)}`,
-    );
-  }
+  let lastErr: Error | undefined;
+  for (let attempt = 0; attempt < RETRY_MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CALL_TIMEOUT_MS);
+    try {
+      const response = await fetchImpl(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${opts.apiKey}`,
+          'HTTP-Referer': process.env.SITE_URL || 'http://localhost:4000',
+          'X-Title': 'Inos',
+        },
+        body,
+        signal: controller.signal,
+      });
 
-  const data = (await response.json()) as {
-    choices?: Array<{
-      message?: { content?: string };
-      finish_reason?: string;
-    }>;
-  };
-  const choice = data.choices?.[0];
-  const content = choice?.message?.content;
-  if (!content) {
-    throw new Error('LLM returned empty response');
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        const retryable = isRetryableHttpStatus(response.status);
+        const err = new Error(
+          `LLM call failed (${response.status}) model=${opts.model} label=${opts.label ?? 'n/a'}: ${text.slice(0, 300)}`,
+        );
+        if (retryable && attempt < RETRY_MAX_ATTEMPTS - 1) {
+          const delay = jitteredDelay(attempt);
+          console.warn(
+            `[ingestion] LLM ${opts.label ?? ''} attempt ${attempt + 1}/${RETRY_MAX_ATTEMPTS} got ${response.status}; retrying in ${delay}ms`,
+          );
+          lastErr = err;
+          await sleep(delay);
+          continue;
+        }
+        throw err;
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{
+          message?: { content?: string };
+          finish_reason?: string;
+        }>;
+      };
+      const choice = data.choices?.[0];
+      const content = choice?.message?.content;
+      if (!content) {
+        throw new Error('LLM returned empty response');
+      }
+      return { content, finishReason: choice?.finish_reason };
+    } catch (err) {
+      const isAbort =
+        err instanceof Error &&
+        (err.name === 'AbortError' || /aborted|timed? ?out/i.test(err.message));
+      const isNetwork =
+        err instanceof TypeError ||
+        (err instanceof Error &&
+          /fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|socket hang up/i.test(
+            err.message,
+          ));
+      const retryable = isAbort || isNetwork;
+      const e = err instanceof Error ? err : new Error(String(err));
+      if (retryable && attempt < RETRY_MAX_ATTEMPTS - 1) {
+        const delay = jitteredDelay(attempt);
+        console.warn(
+          `[ingestion] LLM ${opts.label ?? ''} attempt ${attempt + 1}/${RETRY_MAX_ATTEMPTS} ${isAbort ? 'timed out' : 'network err'}; retrying in ${delay}ms (${e.message})`,
+        );
+        lastErr = e;
+        await sleep(delay);
+        continue;
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   }
-  return { content, finishReason: choice?.finish_reason };
+  // Unreachable: the loop either returns or throws on the final attempt.
+  throw lastErr ?? new Error('LLM call exhausted retries with no error');
 }
 
 function tryParseJson(raw: string): { ok: true; value: unknown } | { ok: false; error: string } {
@@ -369,6 +460,7 @@ async function callLLM(opts: LLMCallOpts): Promise<string> {
     userMessages: [{ role: 'user', content: prompt }],
     maxTokens,
     jsonSchema,
+    label,
   });
 
   const parsed = tryParseJson(first.content);
@@ -399,6 +491,7 @@ async function callLLM(opts: LLMCallOpts): Promise<string> {
     // Give the retry 50% more headroom for the same output budget.
     maxTokens: Math.min(Math.ceil(maxTokens * 1.5), 16000),
     jsonSchema,
+    label: label ? `${label}/retry` : undefined,
   });
 
   // We surface the retried content even if it still doesn't parse —
@@ -409,19 +502,16 @@ async function callLLM(opts: LLMCallOpts): Promise<string> {
 // --- JSON parsing helpers ---
 
 /**
- * Strip a single OUTERMOST markdown code fence pair, then parse JSON.
- * Returns the cleaned JSON string so callers can pass it to
- * `ExtractionSchemaError.rawPayload`.
+ * Strip exactly one OUTER markdown code-fence pair if present and parse JSON.
  *
  * Issue #14 — the prior regex `/```(?:json)?\s*([\s\S]*?)```/` was
- * non-greedy and would happily match an INNER pair, lopping off the
- * JSON's tail. e.g. if the model emitted:
- *   ```json
- *   {"text": "see ``` ... ``` for an example"}
- *   ```
- * the non-greedy match would return `{"text": "see ` and `JSON.parse`
- * would throw. The strict variant below only peels the outermost fence
- * pair, by string ops rather than regex.
+ * non-greedy and matched the FIRST occurrence of "```" anywhere in the
+ * string, even when it appeared inside a JSON string value (e.g. a node
+ * `content` quoting a code block). Non-greedy `.*?` then ended at the
+ * FIRST closing "```", silently truncating the JSON. The strict variant
+ * below only strips when the trimmed payload genuinely starts AND ends
+ * with a fence; otherwise it leaves the raw text alone and lets
+ * JSON.parse decide.
  */
 function stripFencesAndParse(raw: string): {
   parsedJson: unknown;
@@ -432,21 +522,34 @@ function stripFencesAndParse(raw: string): {
   return { parsedJson, jsonStr };
 }
 
-// Exported for unit tests (Issue #14).
+/** @internal — exported for unit testing */
 export function stripCodeFence(raw: string): string {
   const trimmed = raw.trim();
-  if (!trimmed.startsWith('```')) {
-    return trimmed;
-  }
-  // Walk past the opening fence + optional language tag + newline.
-  const afterOpen = trimmed.replace(/^```[^\n]*\n?/, '');
-  // The closing fence is the LAST occurrence of ``` (so anything inside
-  // — including stray ``` inside string values — stays intact).
-  const lastFence = afterOpen.lastIndexOf('```');
-  if (lastFence === -1) {
-    return afterOpen.trim();
-  }
-  return afterOpen.slice(0, lastFence).trim();
+
+  // Only strip if the WHOLE payload is wrapped in a single fence pair.
+  // Anything else (including a leading "```" with no matching trailing one,
+  // or fences embedded inside a JSON string value) is left alone — better
+  // to fail JSON.parse loudly than silently truncate.
+  if (!trimmed.startsWith('```')) return trimmed;
+
+  // Strip the opening fence line (e.g. "```" or "```json"). The fence line
+  // ends at the first newline; everything past it is the payload candidate.
+  const firstNewline = trimmed.indexOf('\n');
+  // A "```" with no newline before EOF is malformed — fall back to raw so
+  // JSON.parse surfaces the real problem.
+  if (firstNewline === -1) return trimmed;
+
+  const openerLine = trimmed.slice(0, firstNewline).trim();
+  // Opener must be just "```" or "```<lang>" with no other content.
+  if (!/^```[A-Za-z0-9_-]*$/.test(openerLine)) return trimmed;
+
+  const afterOpener = trimmed.slice(firstNewline + 1);
+
+  // Closing fence: trailing "```" (with optional surrounding whitespace).
+  if (!afterOpener.trimEnd().endsWith('```')) return trimmed;
+
+  const closingIdx = afterOpener.lastIndexOf('```');
+  return afterOpener.slice(0, closingIdx).trim();
 }
 
 /**
@@ -694,6 +797,7 @@ async function extractChunk(
 async function recoverMissed(
   text: string,
   current: { nodes: ExtractedNode[]; edges: ExtractedEdge[] },
+  warnings?: string[],
 ): Promise<ExtractedNode[]> {
   const currentJson = JSON.stringify(
     current.nodes.map((n) => ({ id: n.id, type: n.type, title: n.title })),
@@ -712,9 +816,13 @@ async function recoverMissed(
   } catch (err) {
     // Recovery is best-effort. Don't fail the whole ingestion if Haiku
     // hiccups — just continue without it.
-    console.warn(
-      `[ingestion] Recovery pass failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
-    );
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[ingestion] Recovery pass failed (non-fatal): ${msg}`);
+    if (warnings) {
+      warnings.push(
+        `recovery pass failed after retries; missed-node sweep skipped: ${msg.slice(0, 200)}`,
+      );
+    }
     return [];
   }
   const parsed = safeParseObject<{ missedNodes?: RawNode[] }>(raw, 'recovery');
@@ -746,11 +854,66 @@ function normalizeTitle(s: string): string {
 }
 
 /**
+ * Supplemental edge pass — wires up nodes that the original Pass-3 edge call
+ * did not see (typically nodes added by the Pass-4 recovery sweep). Returns
+ * ONLY genuinely new edges (deduped against `existingEdges`). Routed to the
+ * cheap validation model since the structural reasoning was already done by
+ * the main edge pass.
+ *
+ * Symmetric with `coerceEdge`: dedupes by (type, source, target).
+ */
+async function edgesForFullNodeSet(
+  text: string,
+  format: InputFormat,
+  allNodes: ExtractedNode[],
+  existingEdges: ExtractedEdge[],
+  model: string,
+): Promise<ExtractedEdge[]> {
+  if (allNodes.length === 0) return [];
+  const nodeIdSet = new Set(allNodes.map((n) => n.id));
+  const nodesJson = JSON.stringify(
+    allNodes.map((n) => ({ id: n.id, type: n.type, title: n.title })),
+    null,
+    2,
+  );
+  const raw = await callLLM({
+    prompt: buildEdgePrompt(format, text, nodesJson),
+    model,
+    maxTokens: 6000,
+    jsonSchema: { name: 'inos_edges_recovery', schema: edgesJsonSchema },
+    label: 'edges-post-recovery',
+  });
+  const parsed = safeParseObject<{ edges?: RawEdge[] }>(raw, 'edges-post-recovery');
+  const proposed = (parsed.edges ?? [])
+    .map((e) => coerceEdge(e, nodeIdSet))
+    .filter((e): e is ExtractedEdge => e !== null);
+
+  // Dedupe against existing edges by (type, source, target).
+  const seen = new Set(
+    existingEdges.map((e) => `${e.type}|${e.source}|${e.target}`),
+  );
+  const fresh: ExtractedEdge[] = [];
+  for (const e of proposed) {
+    const key = `${e.type}|${e.source}|${e.target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    fresh.push(e);
+  }
+  return fresh;
+}
+
+/**
  * Consolidation pass — used when input was chunked. Runs on Haiku.
+ *
+ * Surfaces non-fatal warnings via the `warnings` out-param. If the LLM
+ * call fails after retries, we return the trivially-merged graph (no
+ * dedupe / cross-chunk edges) and push a warning instead of throwing —
+ * earlier passes succeeded and a partial graph beats losing everything.
  */
 async function consolidateChunks(
   perChunk: Array<{ nodes: ExtractedNode[]; edges: ExtractedEdge[]; canvasName?: string; summary?: string }>,
   topic: string | undefined,
+  warnings?: string[],
 ): Promise<{ nodes: ExtractedNode[]; edges: ExtractedEdge[]; canvasName: string; summary: string }> {
   // Trivial merge first: id-prefix per chunk to avoid collisions.
   const allNodes: ExtractedNode[] = [];
@@ -789,9 +952,13 @@ async function consolidateChunks(
       label: 'consolidation',
     });
   } catch (err) {
-    console.warn(
-      `[ingestion] Consolidation pass failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
-    );
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[ingestion] Consolidation pass failed (non-fatal): ${msg}`);
+    if (warnings) {
+      warnings.push(
+        `consolidation pass failed after retries; returning per-chunk merge without dedupe/cross-chunk edges: ${msg.slice(0, 200)}`,
+      );
+    }
     return { nodes: allNodes, edges: allEdges, canvasName, summary };
   }
 
@@ -970,7 +1137,11 @@ function buildGraph(
 
 // --- Compute stats ---
 
-function computeStats(graph: InosGraph, edgesDropped: number): IngestStats {
+function computeStats(
+  graph: InosGraph,
+  edgesDropped: number,
+  parseWarnings?: string[],
+): IngestStats {
   return {
     nodesExtracted: graph.nodes.length,
     edgesExtracted: graph.edges.length,
@@ -979,6 +1150,9 @@ function computeStats(graph: InosGraph, edgesDropped: number): IngestStats {
     questionsExtracted: graph.nodes.filter((n) => n.type === 'question').length,
     edgesDropped,
     nodesWithSpan: graph.nodes.filter((n) => n.sourceSpan != null).length,
+    ...(parseWarnings && parseWarnings.length > 0
+      ? { parseWarnings }
+      : {}),
   };
 }
 
@@ -1006,6 +1180,9 @@ export async function extractAndBuildGraph(
   const model = getModel(options.model);
 
   const chunks = chunkText(text);
+  // Accumulator for non-fatal warnings (#13). Surfaces to IngestStats so the
+  // caller can decide whether to flag a partial result in the UI.
+  const parseWarnings: string[] = [];
   console.log(
     `[ingestion] Multi-pass extraction: model=${model}, format=${format}, textLen=${text.length}, chunks=${chunks.length}`,
   );
@@ -1038,14 +1215,46 @@ export async function extractAndBuildGraph(
       summary: single.summary ?? '',
     };
   } else {
-    merged = await consolidateChunks(perChunk, options.topic);
+    merged = await consolidateChunks(perChunk, options.topic, parseWarnings);
   }
 
   // Pass 4 — recovery sweep.
-  const recovered = await recoverMissed(text, merged);
+  const recovered = await recoverMissed(text, merged, parseWarnings);
   if (recovered.length > 0) {
     console.log(`[ingestion] Recovery added ${recovered.length} missed node(s)`);
     merged.nodes = [...merged.nodes, ...recovered];
+
+    // edgeRecall fix (#4): the original Pass-3 edge call ran BEFORE recovery,
+    // so any recovered node had zero incoming/outgoing edges. Catastrophic on
+    // fixtures where Pass 4 surfaces 2–3 load-bearing nodes (fixtures 04/05
+    // dropped to edgeRecall 0.22/0.18 from this alone). Re-run Pass 3 against
+    // the FULL merged node set so recovered nodes can be wired up. Edges are
+    // permitted to reference any node from any prior pass.
+    try {
+      const newEdges = await edgesForFullNodeSet(
+        text,
+        format,
+        merged.nodes,
+        merged.edges,
+        getValidationModel(),
+      );
+      if (newEdges.length > 0) {
+        console.log(
+          `[ingestion] Post-recovery edge pass added ${newEdges.length} edge(s)`,
+        );
+        merged.edges = [...merged.edges, ...newEdges];
+      }
+    } catch (err) {
+      // Best-effort: don't fail the whole ingestion if the supplemental
+      // edge call hiccups. The existing edges from Pass 3 are still good.
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[ingestion] Post-recovery edge pass failed (non-fatal): ${msg}`,
+      );
+      parseWarnings.push(
+        `post-recovery edge pass failed after retries; recovered nodes may have fewer edges: ${msg.slice(0, 200)}`,
+      );
+    }
   }
 
   // Apply config filters (extractFacts=false etc.) AFTER recovery.
@@ -1133,7 +1342,7 @@ export async function extractAndBuildGraph(
 
   const positionedNodes = forceLayout(validated.nodes, validated.edges);
   const graph = buildGraph(validated, positionedNodes, text);
-  const stats = computeStats(graph, edgesDropped);
+  const stats = computeStats(graph, edgesDropped, parseWarnings);
 
   return { graph, stats };
 }
