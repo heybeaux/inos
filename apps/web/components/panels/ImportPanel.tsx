@@ -64,7 +64,7 @@ export function ImportPanel() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="fixed top-14 right-0 z-20 w-96 max-h-[calc(100vh-4rem)] overflow-y-auto glass rounded-bl-xl p-5"
+      className="fixed top-12 sm:top-14 right-0 z-20 w-full sm:w-96 max-h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-4rem)] overflow-y-auto glass rounded-bl-xl p-5"
       style={{
         border: '1px solid var(--surface-glass-border)',
         borderRight: 'none',

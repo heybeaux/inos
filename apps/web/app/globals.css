@@ -30,3 +30,8 @@ a:hover {
   background: rgba(0, 245, 212, 0.3);
   color: #fff;
 }
+
+/* Hide scrollbar but keep scroll behavior — used by the TopBar button row
+   so panel toggles stay reachable on narrow phones without a visible bar */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

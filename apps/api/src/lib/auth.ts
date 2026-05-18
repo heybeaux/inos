@@ -22,9 +22,13 @@ import type { MiddlewareHandler } from 'hono';
 
 const TOKEN_ENV = 'INOS_API_TOKEN';
 const INGEST_BODY_LIMIT_BYTES = 64 * 1024;
+// /api/query echoes the whole graph (nodes + edges) back to the API for
+// LLM context, so it needs more headroom than CRUD endpoints.
+const QUERY_BODY_LIMIT_BYTES = 256 * 1024;
 const DEFAULT_BODY_LIMIT_BYTES = 8 * 1024;
 
 const INGEST_PATH_PREFIX = '/api/ingest';
+const QUERY_PATH_PREFIX = '/api/query';
 
 interface Bucket {
   tokens: number;
@@ -110,9 +114,12 @@ export const bodyLimitMiddleware: MiddlewareHandler = async (c, next) => {
   if (method === 'GET' || method === 'DELETE' || method === 'HEAD') {
     return next();
   }
-  const limit = c.req.path.startsWith(INGEST_PATH_PREFIX)
+  const path = c.req.path;
+  const limit = path.startsWith(INGEST_PATH_PREFIX)
     ? INGEST_BODY_LIMIT_BYTES
-    : DEFAULT_BODY_LIMIT_BYTES;
+    : path.startsWith(QUERY_PATH_PREFIX)
+      ? QUERY_BODY_LIMIT_BYTES
+      : DEFAULT_BODY_LIMIT_BYTES;
 
   const contentLengthHeader = c.req.header('content-length');
   if (contentLengthHeader) {

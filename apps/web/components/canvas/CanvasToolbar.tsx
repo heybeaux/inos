@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGraphStore, COMMAND_NODE_TYPES, getNodeColor } from '@/lib/store';
 import type { NodeType } from '@heybeaux/inos-types';
@@ -18,6 +18,7 @@ function ToolbarButton({ icon, label, active, accentColor, onClick }: ToolbarBut
     <button
       onClick={onClick}
       title={label}
+      aria-label={label}
       className="flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-150"
       style={{
         background: active ? (accentColor ? `${accentColor}20` : 'rgba(0, 245, 212, 0.15)') : 'transparent',
@@ -55,6 +56,10 @@ function Divider({ vertical = true }: DividerProps) {
   );
 }
 
+// Collapse defaults to true on viewports narrower than this. Matches the
+// Tailwind `sm` breakpoint we use elsewhere for the responsive top bar.
+const MOBILE_BREAKPOINT = 640;
+
 export function CanvasToolbar() {
   const {
     toolbarPlacementMode,
@@ -69,24 +74,83 @@ export function CanvasToolbar() {
     nodes,
   } = useGraphStore();
 
+  // Auto-collapse on first mount when the viewport is narrow; afterwards
+  // the user's explicit toggle wins (no auto-uncollapse on resize, which
+  // would feel jumpy if they rotate the device).
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < MOBILE_BREAKPOINT;
+  });
+  const [userToggled, setUserToggled] = useState(false);
+  useEffect(() => {
+    if (userToggled) return;
+    const onResize = () => {
+      if (window.innerWidth < MOBILE_BREAKPOINT) setCollapsed(true);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [userToggled]);
+
   const handleZoomIn = useCallback(() => setZoom(Math.min(zoom + 0.2, 3)), [zoom, setZoom]);
   const handleZoomOut = useCallback(() => setZoom(Math.max(zoom - 0.2, 0.3)), [zoom, setZoom]);
   const handleZoomFit = useCallback(() => setZoom(1), [setZoom]);
 
   const nodeCount = nodes.filter((n) => n.status !== 'orphaned').length;
 
+  const toggleCollapsed = () => {
+    setUserToggled(true);
+    setCollapsed((c) => !c);
+  };
+
+  if (collapsed) {
+    return (
+      <motion.button
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.3, duration: 0.3 }}
+        onClick={toggleCollapsed}
+        aria-label="Expand toolbar"
+        title="Expand toolbar"
+        className="fixed left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-lg flex items-center justify-center"
+        style={{
+          background: 'var(--surface-glass)',
+          border: '1px solid var(--surface-glass-border)',
+          backdropFilter: 'blur(12px)',
+          color: 'var(--bio-cyan)',
+        }}
+      >
+        <span className="text-sm">›</span>
+      </motion.button>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.5, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed left-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1 p-2 rounded-xl"
+      className="fixed left-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1 p-2 rounded-xl max-h-[88vh] overflow-y-auto"
       style={{
         background: 'var(--surface-glass)',
         border: '1px solid var(--surface-glass-border)',
         backdropFilter: 'blur(12px)',
       }}
     >
+      {/* Collapse handle */}
+      <button
+        onClick={toggleCollapsed}
+        aria-label="Collapse toolbar"
+        title="Collapse toolbar"
+        className="flex items-center justify-center w-9 h-7 rounded-lg transition-all duration-150"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-hover)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      >
+        <span className="text-sm">‹</span>
+      </button>
+
+      <Divider vertical={false} />
+
       {/* Node creation buttons */}
       <div className="flex flex-col gap-0.5">
         {COMMAND_NODE_TYPES.map(({ type, label, icon }) => {
@@ -105,7 +169,7 @@ export function CanvasToolbar() {
         })}
       </div>
 
-      <Divider />
+      <Divider vertical={false} />
 
       {/* Command palette */}
       <ToolbarButton
@@ -114,7 +178,7 @@ export function CanvasToolbar() {
         onClick={() => setCommandPaletteOpen(true)}
       />
 
-      <Divider />
+      <Divider vertical={false} />
 
       {/* Zoom controls */}
       <div className="flex flex-col gap-0.5">
@@ -128,7 +192,7 @@ export function CanvasToolbar() {
         <ToolbarButton icon="⊡" label="Fit View" onClick={handleZoomFit} />
       </div>
 
-      <Divider />
+      <Divider vertical={false} />
 
       {/* Panel toggles */}
       <div className="flex flex-col gap-0.5">
@@ -155,7 +219,7 @@ export function CanvasToolbar() {
         />
       </div>
 
-      <Divider />
+      <Divider vertical={false} />
 
       {/* Node count */}
       <div className="flex items-center justify-center h-9">

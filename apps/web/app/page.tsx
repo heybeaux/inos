@@ -42,15 +42,15 @@ function TopBar() {
       initial={{ y: -60 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-3 glass"
+      className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 px-3 sm:px-6 py-2 sm:py-3 glass"
       style={{ borderBottom: '1px solid var(--surface-glass-border)' }}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-xl font-bold" style={{ color: 'var(--bio-cyan)' }}>
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
+        <span className="text-lg sm:text-xl font-bold flex-shrink-0" style={{ color: 'var(--bio-cyan)' }}>
           ☁ Inos
         </span>
         <span
-          className="text-sm px-3 py-1 rounded-full"
+          className="hidden sm:inline text-sm px-3 py-1 rounded-full truncate max-w-[40vw]"
           style={{
             background: 'var(--surface-glass)',
             color: 'var(--text-secondary)',
@@ -61,11 +61,11 @@ function TopBar() {
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Cmd+K shortcut button */}
+      <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
+        {/* Cmd+K shortcut button — hidden on small screens to save row width */}
         <button
           onClick={() => setCommandPaletteOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all duration-200"
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all duration-200 flex-shrink-0"
           style={{
             background: 'transparent',
             color: 'var(--text-secondary)',
@@ -94,7 +94,7 @@ function TopBar() {
             <button
               key={key}
               onClick={() => (isActive ? closePanels() : setActivePanel(key))}
-              className="px-3 py-1.5 text-sm rounded-lg transition-all duration-200"
+              className="px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-all duration-200 flex-shrink-0 whitespace-nowrap"
               style={{
                 background: isActive ? 'var(--bio-cyan)' : 'transparent',
                 color: isActive ? 'var(--abyss-deepest)' : 'var(--text-secondary)',
@@ -124,7 +124,7 @@ function Legend() {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 1, duration: 0.5 }}
-      className="fixed bottom-4 left-4 z-20 glass rounded-xl px-4 py-3"
+      className="hidden sm:block fixed bottom-4 left-4 z-20 glass rounded-xl px-4 py-3"
       style={{
         background: 'var(--surface-glass)',
         border: '1px solid var(--surface-glass-border)',
@@ -179,7 +179,7 @@ export default function CanvasPage() {
       <TopBar />
       <div
         ref={canvasContainerRef}
-        className="w-full h-full pt-14"
+        className="w-full h-full pt-12 sm:pt-14"
         onClick={handleContainerClick}
       >
         <CanvasErrorBoundary>
