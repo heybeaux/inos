@@ -81,27 +81,50 @@ export function gradePass(
     ? 1
     : matched.size / reference.nodes.length;
 
-  // --- Span coverage: of matched nodes, fraction whose sourceSpan.excerpt
-  // is verifiably a substring of the original fixture text. ---
+  // --- Span coverage: of matched nodes, weight by resolveStrategy honesty
+  // (issue #19). Old grader scored ANY excerpt that happened to substring-
+  // match as 1.0 — which double-counted fuzzy/approximate spans that the
+  // sourceSpan resolver only kept because of a 20-char LCS coincidence. New
+  // scoring:
+  //   verbatim    -> 1.0   (exact or whitespace-normalized hit)
+  //   approximate -> 0.5   (fuzzy ≥40-char or ≥80% needle coverage)
+  //   unresolved  -> 0.0   (no sourceSpan, or no excerpt)
+  // We fall back to the substring check ONLY when a span exists without a
+  // resolveStrategy tag (legacy serializations from before this change).
+  // ---
   let matchedNodesWithSpan = 0;
-  let matchedNodesWithVerifiedSpan = 0;
+  let matchedNodesWithVerifiedSpan = 0; // verbatim + approximate combined
+  let spanScore = 0;
   const haystack = originalText ?? '';
   const haystackLower = haystack.toLowerCase();
   for (const n of matchedNodes) {
-    if (n.sourceSpan && typeof n.sourceSpan.excerpt === 'string') {
+    const span = n.sourceSpan as
+      | (typeof n.sourceSpan & { resolveStrategy?: string })
+      | undefined;
+    if (span && typeof span.excerpt === 'string') {
       matchedNodesWithSpan++;
-      if (
-        haystack &&
-        haystackLower.includes(n.sourceSpan.excerpt.toLowerCase())
-      ) {
+      const strategy = span.resolveStrategy;
+      if (strategy === 'verbatim') {
+        spanScore += 1.0;
         matchedNodesWithVerifiedSpan++;
+      } else if (strategy === 'approximate') {
+        spanScore += 0.5;
+        matchedNodesWithVerifiedSpan++;
+      } else if (strategy === 'unresolved') {
+        // Tagged unresolved spans contribute zero (the resolver shouldn't
+        // really return one in this state, but be defensive).
+      } else {
+        // Legacy / untagged span — fall back to substring check at half
+        // credit, since we don't know whether it was an exact or fuzzy hit.
+        if (haystack && haystackLower.includes(span.excerpt.toLowerCase())) {
+          spanScore += 0.5;
+          matchedNodesWithVerifiedSpan++;
+        }
       }
     }
   }
   const spanCoverage =
-    matchedNodes.length === 0
-      ? -1
-      : matchedNodesWithVerifiedSpan / matchedNodes.length;
+    matchedNodes.length === 0 ? -1 : spanScore / matchedNodes.length;
 
   // Edge precision: of edges the extractor emitted, what fraction connect a
   // pair of nodes that both matched reference nodes? (proxy for "real" edges)
