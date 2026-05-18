@@ -409,28 +409,44 @@ async function callLLM(opts: LLMCallOpts): Promise<string> {
 // --- JSON parsing helpers ---
 
 /**
- * Strip markdown fences and parse JSON. Returns the cleaned JSON string
- * (jsonStr) so callers can pass it to `ExtractionSchemaError.rawPayload`.
+ * Strip a single OUTERMOST markdown code fence pair, then parse JSON.
+ * Returns the cleaned JSON string so callers can pass it to
+ * `ExtractionSchemaError.rawPayload`.
+ *
+ * Issue #14 — the prior regex `/```(?:json)?\s*([\s\S]*?)```/` was
+ * non-greedy and would happily match an INNER pair, lopping off the
+ * JSON's tail. e.g. if the model emitted:
+ *   ```json
+ *   {"text": "see ``` ... ``` for an example"}
+ *   ```
+ * the non-greedy match would return `{"text": "see ` and `JSON.parse`
+ * would throw. The strict variant below only peels the outermost fence
+ * pair, by string ops rather than regex.
  */
 function stripFencesAndParse(raw: string): {
   parsedJson: unknown;
   jsonStr: string;
 } {
-  let jsonStr = raw.trim();
-
-  const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    jsonStr = codeBlockMatch[1].trim();
-  }
-
+  const jsonStr = stripCodeFence(raw);
   const parsedJson: unknown = JSON.parse(jsonStr);
   return { parsedJson, jsonStr };
 }
 
-function stripCodeFence(raw: string): string {
+// Exported for unit tests (Issue #14).
+export function stripCodeFence(raw: string): string {
   const trimmed = raw.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return fence ? fence[1].trim() : trimmed;
+  if (!trimmed.startsWith('```')) {
+    return trimmed;
+  }
+  // Walk past the opening fence + optional language tag + newline.
+  const afterOpen = trimmed.replace(/^```[^\n]*\n?/, '');
+  // The closing fence is the LAST occurrence of ``` (so anything inside
+  // — including stray ``` inside string values — stays intact).
+  const lastFence = afterOpen.lastIndexOf('```');
+  if (lastFence === -1) {
+    return afterOpen.trim();
+  }
+  return afterOpen.slice(0, lastFence).trim();
 }
 
 /**

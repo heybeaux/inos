@@ -1,0 +1,3 @@
+# Local SQLite DB — recreated per dev from `prisma migrate deploy`.
+prisma/*.db
+prisma/*.db-journal
