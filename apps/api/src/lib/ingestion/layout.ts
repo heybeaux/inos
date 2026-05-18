@@ -124,7 +124,11 @@ export function forceLayout<
       if (srcIdx === -1 || tgtIdx === -1) continue;
 
       const diff = sub(positions[tgtIdx], positions[srcIdx]);
-      const dist = length(diff);
+      // Floor distance at MIN_DISTANCE to keep the spring term sane when
+      // two connected nodes have collapsed onto the same point — without
+      // this, an unlucky seed can drive `dir` to zero AND `attForce` to
+      // -idealDist*k, leaving the pair frozen on top of each other.
+      const dist = Math.max(MIN_DISTANCE, length(diff));
       const idealDist = 100;
       const attForce = (dist - idealDist) * ATTRACTION_STRENGTH;
       const dir = normalize(diff);

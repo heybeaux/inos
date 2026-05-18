@@ -6,6 +6,12 @@ import type { InosNode, InosEdge } from '@heybeaux/inos-types';
 import { Node3D } from './Node3D';
 import { Edge3D } from './Edge3D';
 
+// Floor for the inverse-distance / inverse-magnitude divisors below.
+// `Math.sqrt(tinyPositive)` is still positive and slips past `||`
+// fallbacks, but yields exploding `force / (dist * dist)` terms and
+// eventually NaN positions once a coincident pair appears.
+const MIN_DISTANCE = 0.1;
+
 // Simple force-directed layout using memoized positions
 function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
   return useMemo(() => {
@@ -49,7 +55,7 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
           const dx = b[0] - a[0];
           const dy = b[1] - a[1];
           const dz = b[2] - a[2];
-          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.01;
+          const dist = Math.max(MIN_DISTANCE, Math.sqrt(dx * dx + dy * dy + dz * dz));
           const force = 8 / (dist * dist);
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
@@ -69,7 +75,7 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
         const dx = b[0] - a[0];
         const dy = b[1] - a[1];
         const dz = b[2] - a[2];
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.01;
+        const dist = Math.max(MIN_DISTANCE, Math.sqrt(dx * dx + dy * dy + dz * dz));
         const force = 0.02 * (dist - 3);
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
