@@ -8,13 +8,25 @@ import {
   bodyLimitMiddleware,
   rateLimitMiddleware,
 } from './lib/auth.js';
+import { resolveCorsConfig } from './lib/cors-config.js';
 
 const app = new Hono();
 
-app.use('/*', cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true,
-}));
+// CORS (Issue #16) — allowed origins from env, with a sane localhost
+// default for dev. We use bearer tokens, not cookies, so credentials
+// are off.
+const { origins: ALLOWED_ORIGINS, credentials: CORS_CREDENTIALS } = resolveCorsConfig({
+  rawOrigins: process.env.INOS_ALLOWED_ORIGINS,
+  credentials: false,
+});
+
+app.use(
+  '/*',
+  cors({
+    origin: ALLOWED_ORIGINS,
+    credentials: CORS_CREDENTIALS,
+  }),
+);
 
 // Order matters: cap body size before parsing JSON, rate-limit before
 // auth (so unauthenticated floods can't pin a CPU on bcrypt-style work),
