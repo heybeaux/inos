@@ -3,6 +3,11 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import ingestionRoute from './routes/ingestion.js';
 import canvasesRoute from './routes/canvases.js';
+import {
+  authMiddleware,
+  bodyLimitMiddleware,
+  rateLimitMiddleware,
+} from './lib/auth.js';
 
 const app = new Hono();
 
@@ -10,6 +15,13 @@ app.use('/*', cors({
   origin: ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
 }));
+
+// Order matters: cap body size before parsing JSON, rate-limit before
+// auth (so unauthenticated floods can't pin a CPU on bcrypt-style work),
+// and check auth before anything actually mutates state.
+app.use('/*', bodyLimitMiddleware);
+app.use('/*', rateLimitMiddleware);
+app.use('/*', authMiddleware);
 
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 

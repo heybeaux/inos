@@ -19,13 +19,19 @@ let tempDir: string;
 let prisma: PrismaClient;
 let app: typeof import('../index.js').default;
 
+const TEST_TOKEN = 'test-token-abc123';
+
 async function jsonReq(
   path: string,
   init: RequestInit = {},
 ): Promise<{ status: number; body: any }> {
   const req = new Request(`http://localhost${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${TEST_TOKEN}`,
+      ...(init.headers ?? {}),
+    },
   });
   const res = await app.fetch(req);
   let body: any = null;
@@ -42,6 +48,7 @@ beforeAll(async () => {
   const dbPath = join(tempDir, 'test.db');
   process.env.DATABASE_URL = `file:${dbPath}`;
   process.env.VITEST = '1';
+  process.env.INOS_API_TOKEN = TEST_TOKEN;
 
   // Apply the committed migrations against the temp DB.
   execSync(`npx prisma migrate deploy --schema ${SCHEMA_PATH}`, {

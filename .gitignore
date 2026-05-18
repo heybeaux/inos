@@ -11,3 +11,4 @@ ref-types-*.tsv
 fixture-*-fresh.json
 .env*
 !.env.example
+!.env.local.example
