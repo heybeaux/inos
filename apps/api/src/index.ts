@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import ingestionRoute from './routes/ingestion.js';
+import canvasesRoute from './routes/canvases.js';
 
 const app = new Hono();
 
@@ -91,9 +92,14 @@ Rules:
 });
 
 app.route('', ingestionRoute);
+app.route('', canvasesRoute);
 
-const port = Number(process.env.INOS_API_PORT ?? '4000');
-console.log(`Inos API server is running on port ${port}`);
-serve({ fetch: app.fetch, port });
+// Vitest imports this module to mount the routes — only auto-start when
+// we're not in a test context.
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  const port = Number(process.env.INOS_API_PORT ?? '4000');
+  console.log(`Inos API server is running on port ${port}`);
+  serve({ fetch: app.fetch, port });
+}
 
 export default app;
