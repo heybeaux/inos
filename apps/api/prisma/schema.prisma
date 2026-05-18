@@ -1,0 +1,106 @@
+// Inos persistence layer — SQLite for v1.
+//
+// Why SQLite: zero-ops, ships in the repo, the read pattern is "load
+// one canvas at a time, render a few hundred nodes" — Postgres-level
+// concurrency is not yet on the table.
+//
+// Why JSON columns for tags/sourceSpan/visits/etc.: the inner shapes
+// already exist as zod-validated structures in @heybeaux/inos-types
+// and they're consumed as a unit (the client always wants the full
+// object, never a single tag). Normalizing them would multiply the
+// table count without giving us a query we'd actually run.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Canvas {
+  id            String   @id
+  name          String
+  description   String?
+  authorJson    String   // NodeAuthor — { type, ... }
+  participants  String   @default("[]") // NodeAuthor[]
+  tags          String   @default("[]") // string[]
+  schemaVersion String   @default("1.0.0")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  nodes InosNode[]
+  edges Edge[]
+  facts Fact[]
+}
+
+model InosNode {
+  id            String   @id
+  canvasId      String
+  type          String   // claim | question | decision | evidence | fact | ...
+  title         String
+  // `content` is a polymorphic NodeContent — store as JSON string.
+  contentJson   String
+  authorJson    String
+  status        String   @default("fresh")
+  tags          String   @default("[]")        // string[]
+  dependsOn     String   @default("[]")        // string[] of node ids
+  visits        String   @default("[]")        // VisitRecord[]
+  staleness     String                         // StalenessInfo
+  sourceSpan    String?                        // NodeSourceSpan
+  // Optional layout hint (force-layout x/y); not authoritative.
+  posX          Float?
+  posY          Float?
+  // Fields the extractor sometimes populates; nullable to avoid phantom
+  // columns no one writes.
+  engramMemoryId String?
+  factKey       String?
+  schemaVersion  String  @default("1.0.0")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  canvas Canvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([canvasId, type])
+}
+
+model Edge {
+  id            String   @id
+  canvasId      String
+  type          String
+  sourceId      String
+  targetId      String
+  label         String?
+  authorJson    String
+  schemaVersion String   @default("1.0.0")
+  createdAt     DateTime @default(now())
+
+  canvas Canvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([sourceId])
+  @@index([targetId])
+}
+
+model Fact {
+  id         String   @id @default(cuid())
+  canvasId   String
+  // The stable snake_case lookup key (e.g. "redshift_cluster_cost_per_month").
+  key        String
+  label      String
+  valueJson  String   // any JSON-serialisable value
+  unit       String?
+  staleness  String   @default("current") // current | stale | disputed
+  sources    String   @default("[]")      // string[] of node ids
+  conflicts  String   @default("[]")      // ConflictEntry[]
+  dependedOnBy String @default("[]")      // string[] of node ids
+  updatedAt  DateTime @updatedAt
+  updatedByJson String                    // NodeAuthor
+
+  canvas Canvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, key])
+  @@index([canvasId])
+}

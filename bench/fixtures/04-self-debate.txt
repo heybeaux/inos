@@ -1,0 +1,31 @@
+Should we open-source our core ranking algorithm?
+
+I keep going back and forth on this. Let me argue it out with myself properly instead of cycling.
+
+The case FOR open-sourcing is: our ranking algorithm is the most differentiated thing we've built. It's three years of work. Engineers I want to hire have heard of it because two of them mentioned it in interviews unprompted. Open-sourcing it would (a) give us a recruiting magnet that no marketing budget can buy, (b) create a Schelling point in the industry — if Hacker News is debating our algorithm, we are the default reference, (c) generate external contributions that might genuinely improve the system, and (d) align with the values I've publicly stated about the field needing more openness.
+
+But wait — there's a strong counter-argument I keep dodging. The algorithm IS the product. Or at least, the algorithm is what makes the product not-replicable in a weekend. If I open-source it, a well-resourced competitor — say, a team of three ex-Google engineers backed by a16z — can take our three years of work and skip directly to the parts we haven't figured out yet (distribution, UX, the data flywheel). I'd be handing them the hard part for free.
+
+OK, but that counter has its own counter. "The algorithm is the product" is the kind of thing engineers say. It's almost never true. The product is the experience — the data we have, the integrations we've built, the trust we've earned with users, the UX polish, the support team. The algorithm is one ingredient. If a three-person team could take our open-sourced algorithm and beat us, they could probably also have built the algorithm from scratch. They'd be a serious competitor either way.
+
+No, that misses something. The scenario isn't "could a serious competitor reproduce our algorithm." The scenario is "does open-sourcing the algorithm change the median competitor's calculus." Right now, a mid-tier competitor can't ship our quality of ranking because they'd need to invest 18 months. Post-open-source, they ship it in 2 weeks. That doesn't change whether ELITE competitors threaten us — they're a threat regardless. But it dramatically increases the number of MEDIAN competitors who become a threat. The competitive surface area expands.
+
+The obvious objection is that we'd license it in a way that prevents commercial competitive use. SSPL, AGPL, Elastic License — there are precedents. Mongo did it. Elastic did it. Redis did it. But those licenses got a LOT of pushback and arguably hurt the community goodwill those companies were trying to build by being "open." If I open-source with an SSPL, I get neither the recruiting magnet nor the goodwill nor the contributions — I get a press release and a bunch of HN comments about how I'm not really open-source. That's worst-of-both.
+
+Hmm. Let me steelman the open-source position one more time. The strongest version isn't "open-source the whole algorithm." It's "open-source the boring 80%." There's a real distinction between (a) the core ranking primitives — relevance scoring, the embedding model architecture, the index format — and (b) the proprietary 20% — the training data, the feature engineering choices, the hyperparameters tuned over thousands of A/B tests. If I release (a) as a library and keep (b) as our moat, I get most of the recruiting and reputation benefit while preserving the hard-to-copy parts.
+
+That's actually persuasive. But — and this is where I get suspicious of my own reasoning — that's basically what every company says when they want to do an open-source play. "We'll open-source the boring parts." Then either the boring parts turn out to BE the hard parts (and you've given away the moat), or the boring parts turn out to be genuinely boring (and you don't get the reputation lift because nobody finds it interesting). The interesting open-source projects are interesting because they're the actual hard thing. PyTorch isn't interesting because it's a wrapper. Postgres isn't interesting because it's documentation.
+
+So I have to ask: is the core ranking primitive — separated from our training data — actually interesting? I think the honest answer is "moderately." Our embedding architecture has one or two genuinely novel choices. The index format is a smart implementation but not revolutionary. The relevance scoring is incrementally better than open alternatives but the delta wouldn't shock anyone.
+
+That suggests the recruiting-magnet thesis is weaker than I thought. Engineers will tell me they recognize the algorithm because they read about it in a blog post we wrote, not because the open-source code is itself a magnet.
+
+Where I land, tentatively: I'm going to write up the embedding architecture decision and the index format as deep technical blog posts, not as open-source code. That captures most of the reputation benefit, costs less, gives away less of the moat, and lets me see if the blog posts move the needle on inbound hires before I commit to open-sourcing anything.
+
+Unresolved branch I'm flagging for later: what if we go through a Series B in 18 months and the strategic position is different? At that point, the moat from the algorithm may matter less (we'd have data flywheel, brand, distribution) and the reputational/community value of an open-source project may matter more. So this is a "no for now, revisit at next funding milestone" decision, not a "no forever."
+
+Second unresolved branch: if a major competitor open-sources THEIR algorithm first, the equilibrium changes — I'd be the one looking closed and behind the curve, and the right move might be a fast-follow. Worth keeping a finger on the pulse of what Vespa, Weaviate, and the Pinecone team are doing.
+
+I'm aware that I've talked myself out of the bold move toward the safer move. Part of me thinks that's just risk aversion dressed up as analysis. But the other part of me thinks the "open-source for community" frame is a pattern that pattern-matches to "I want the social reward of being seen as open without paying the strategic cost," and I want to resist that.
+
+Filing this and coming back to it after Q2 numbers.

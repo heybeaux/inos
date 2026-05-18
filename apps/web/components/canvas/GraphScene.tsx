@@ -3,21 +3,39 @@
 import { useMemo } from 'react';
 import { useGraphStore } from '@/lib/store';
 import type { InosNode, InosEdge } from '@heybeaux/inos-types';
+import { mulberry32, seedFromString } from '@heybeaux/inos-core';
 import { Node3D } from './Node3D';
 import { Edge3D } from './Edge3D';
 
-// Simple force-directed layout using memoized positions
-function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
+// Floor for the inverse-distance / inverse-magnitude divisors below.
+// `Math.sqrt(tinyPositive)` is still positive and slips past `||`
+// fallbacks, but yields exploding `force / (dist * dist)` terms and
+// eventually NaN positions once a coincident pair appears.
+const MIN_DISTANCE = 0.1;
+
+// Simple force-directed layout using memoized positions.
+// `seedKey` makes the initial random sphere deterministic per canvas
+// so the layout is reproducible across reloads, server renders, and
+// visual diffs.
+function useForceLayout(
+  nodes: InosNode[],
+  edges: InosEdge[],
+  seedKey: string,
+) {
   return useMemo(() => {
     if (nodes.length === 0) return new Map<string, [number, number, number]>();
 
     const nodeMap = new Map<string, [number, number, number]>();
 
+    // Seed PRNG from canvas id so the same graph always lays out the
+    // same way; previously `Math.random()` made every reload jitter.
+    const rand = mulberry32(seedFromString(seedKey));
+
     // Initial random positions — scale sphere with node count
     const r = Math.max(5, Math.sqrt(nodes.length) * 1.5);
     for (const node of nodes) {
-      const phi = Math.acos(2 * Math.random() - 1);
-      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * rand() - 1);
+      const theta = rand() * Math.PI * 2;
       nodeMap.set(node.id, [
         r * Math.sin(phi) * Math.cos(theta),
         r * Math.sin(phi) * Math.sin(theta),
@@ -49,7 +67,7 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
           const dx = b[0] - a[0];
           const dy = b[1] - a[1];
           const dz = b[2] - a[2];
-          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.01;
+          const dist = Math.max(MIN_DISTANCE, Math.sqrt(dx * dx + dy * dy + dz * dz));
           const force = 8 / (dist * dist);
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
@@ -69,7 +87,7 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
         const dx = b[0] - a[0];
         const dy = b[1] - a[1];
         const dz = b[2] - a[2];
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.01;
+        const dist = Math.max(MIN_DISTANCE, Math.sqrt(dx * dx + dy * dy + dz * dz));
         const force = 0.02 * (dist - 3);
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -98,12 +116,16 @@ function useForceLayout(nodes: InosNode[], edges: InosEdge[]) {
     }
 
     return nodeMap;
-  }, [nodes, edges]);
+  }, [nodes, edges, seedKey]);
 }
 
 export function GraphScene() {
-  const { nodes, edges, hoveredNodeId, setHoveredNode, openNodeDetail, visibleNodeIds } = useGraphStore();
-  const positions = useForceLayout(nodes, edges);
+  const { nodes, edges, hoveredNodeId, setHoveredNode, openNodeDetail, visibleNodeIds, canvasName } = useGraphStore();
+  // Prefer the actual canvasId from a real node so layouts stay stable
+  // when the user renames the canvas; fall back to canvasName for the
+  // initial empty-store render.
+  const seedKey = nodes[0]?.canvasId ?? canvasName;
+  const positions = useForceLayout(nodes, edges, seedKey);
 
   // Filter nodes and edges based on timeline visibility
   const visibleNodes = visibleNodeIds

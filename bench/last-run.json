@@ -1,0 +1,251 @@
+{
+  "startedAt": "2026-05-18T02:34:04.405Z",
+  "finishedAt": "2026-05-18T02:41:26.326Z",
+  "config": {
+    "apiUrl": "http://localhost:4000",
+    "passes": 3,
+    "thresholds": {
+      "nodeRecall": 0.85,
+      "edgePrecision": 0.8,
+      "schemaValidRate": 1
+    }
+  },
+  "results": [
+    {
+      "fixtureId": "04-self-debate",
+      "passes": 3,
+      "perPassMetrics": [
+        {
+          "pass": 1,
+          "nodesExtracted": 32,
+          "edgesExtracted": 35,
+          "nodeRecall": 0.8,
+          "edgePrecision": 1,
+          "edgeRecall": 0.3333333333333333,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-open-source",
+            "claim-recruiting-magnet",
+            "claim-schelling-point",
+            "claim-algorithm-is-product",
+            "challenge-algorithm-not-product",
+            "claim-restrictive-license",
+            "challenge-license-worst-of-both",
+            "claim-open-boring-80",
+            "meta-risk-aversion",
+            "decision-write-blog-posts",
+            "branch-revisit-at-series-b",
+            "branch-fast-follow-competitor"
+          ],
+          "missedNodeIds": [
+            "refine-median-competitor",
+            "challenge-boring-not-interesting",
+            "assumption-primitives-are-interesting"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 70904,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 10,
+          "matchedNodesWithVerifiedSpan": 10
+        },
+        {
+          "pass": 2,
+          "nodesExtracted": 35,
+          "edgesExtracted": 38,
+          "nodeRecall": 0.8666666666666667,
+          "edgePrecision": 1,
+          "edgeRecall": 0.2,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-open-source",
+            "claim-recruiting-magnet",
+            "claim-schelling-point",
+            "claim-algorithm-is-product",
+            "challenge-algorithm-not-product",
+            "claim-restrictive-license",
+            "challenge-license-worst-of-both",
+            "claim-open-boring-80",
+            "decision-write-blog-posts",
+            "branch-revisit-at-series-b",
+            "branch-fast-follow-competitor",
+            "challenge-boring-not-interesting",
+            "meta-risk-aversion"
+          ],
+          "missedNodeIds": [
+            "refine-median-competitor",
+            "assumption-primitives-are-interesting"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 67367,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 11,
+          "matchedNodesWithVerifiedSpan": 11
+        },
+        {
+          "pass": 3,
+          "nodesExtracted": 33,
+          "edgesExtracted": 34,
+          "nodeRecall": 0.8,
+          "edgePrecision": 1,
+          "edgeRecall": 0.26666666666666666,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-open-source",
+            "claim-recruiting-magnet",
+            "claim-schelling-point",
+            "claim-algorithm-is-product",
+            "challenge-algorithm-not-product",
+            "claim-restrictive-license",
+            "challenge-license-worst-of-both",
+            "claim-open-boring-80",
+            "decision-write-blog-posts",
+            "branch-revisit-at-series-b",
+            "branch-fast-follow-competitor",
+            "meta-risk-aversion"
+          ],
+          "missedNodeIds": [
+            "refine-median-competitor",
+            "challenge-boring-not-interesting",
+            "assumption-primitives-are-interesting"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 69124,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 10,
+          "matchedNodesWithVerifiedSpan": 10
+        }
+      ],
+      "aggregate": {
+        "avgNodeRecall": 0.8222222222222223,
+        "avgEdgePrecision": 1,
+        "schemaValidRate": 1,
+        "avgDurationMs": 69131.66666666667,
+        "avgSpanCoverage": 1,
+        "avgEdgeRecall": 0.26666666666666666
+      },
+      "deterministic": false
+    },
+    {
+      "fixtureId": "05-messy-markdown",
+      "passes": 3,
+      "perPassMetrics": [
+        {
+          "pass": 1,
+          "nodesExtracted": 42,
+          "edgesExtracted": 51,
+          "nodeRecall": 0.75,
+          "edgePrecision": 1,
+          "edgeRecall": 0.13333333333333333,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-build-vs-buy",
+            "open-q-growthbook",
+            "claim-need-only-basics",
+            "tentative-build-position",
+            "challenge-streaming-complexity",
+            "challenge-targeting-complexity",
+            "insight-opportunity-cost",
+            "decision-buy-launchdarkly",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
+            "reversal-conditions"
+          ],
+          "missedNodeIds": [
+            "claim-build-cheaper",
+            "assumption-low-flag-velocity",
+            "challenge-audit-soc2",
+            "insight-2x-multiplier"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 85451,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 10,
+          "matchedNodesWithVerifiedSpan": 10
+        },
+        {
+          "pass": 2,
+          "nodesExtracted": 30,
+          "edgesExtracted": 40,
+          "nodeRecall": 0.8125,
+          "edgePrecision": 1,
+          "edgeRecall": 0.26666666666666666,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-build-vs-buy",
+            "tentative-build-position",
+            "challenge-streaming-complexity",
+            "challenge-targeting-complexity",
+            "insight-opportunity-cost",
+            "insight-2x-multiplier",
+            "decision-buy-launchdarkly",
+            "open-q-growthbook",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
+            "assumption-low-flag-velocity",
+            "reversal-conditions"
+          ],
+          "missedNodeIds": [
+            "claim-build-cheaper",
+            "claim-need-only-basics",
+            "challenge-audit-soc2"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 75952,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 11,
+          "matchedNodesWithVerifiedSpan": 11
+        },
+        {
+          "pass": 3,
+          "nodesExtracted": 33,
+          "edgesExtracted": 44,
+          "nodeRecall": 0.75,
+          "edgePrecision": 1,
+          "edgeRecall": 0.26666666666666666,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-build-vs-buy",
+            "tentative-build-position",
+            "challenge-streaming-complexity",
+            "challenge-targeting-complexity",
+            "insight-opportunity-cost",
+            "decision-buy-launchdarkly",
+            "open-q-growthbook",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
+            "assumption-low-flag-velocity",
+            "reversal-conditions"
+          ],
+          "missedNodeIds": [
+            "claim-build-cheaper",
+            "claim-need-only-basics",
+            "challenge-audit-soc2",
+            "insight-2x-multiplier"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 73096,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 11,
+          "matchedNodesWithVerifiedSpan": 11
+        }
+      ],
+      "aggregate": {
+        "avgNodeRecall": 0.7708333333333334,
+        "avgEdgePrecision": 1,
+        "schemaValidRate": 1,
+        "avgDurationMs": 78166.33333333333,
+        "avgSpanCoverage": 1,
+        "avgEdgeRecall": 0.22222222222222224
+      },
+      "deterministic": false
+    }
+  ],
+  "passed": false,
+  "failures": [
+    "04-self-debate: nodeRecall 0.822 < 0.85",
+    "05-messy-markdown: nodeRecall 0.771 < 0.85"
+  ]
+}

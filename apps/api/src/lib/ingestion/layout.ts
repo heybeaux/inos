@@ -7,9 +7,26 @@
  *
  * This is a basic implementation — not a full physics engine.
  * Good enough for initial placement; the frontend can refine with d3-force-3d.
+ *
+ * Determinism: pass `seed` (typically derived from a canvasId) to get
+ * a reproducible layout. Without a seed, falls back to `Math.random()`
+ * for back-compat.
  */
+import { mulberry32, seedFromString } from '@heybeaux/inos-core';
 
-import type { ExtractedNode, ExtractedEdge, PositionedNode } from './types.js';
+/**
+ * Layout only needs `id` from each node and `source`/`target` from each
+ * edge. We accept structurally-minimal generics so this works for both
+ * the legacy `ExtractedNode` shape and the new `ValidatedExtractionNode`
+ * from `schema.ts` without forcing a cast.
+ */
+interface LayoutNodeLike {
+  id: string;
+}
+interface LayoutEdgeLike {
+  source: string;
+  target: string;
+}
 
 interface Vec3 {
   x: number;
@@ -50,27 +67,45 @@ function normalize(v: Vec3): Vec3 {
   return { x: v.x / len, y: v.y / len, z: v.z / len };
 }
 
-function randomPosition(): Vec3 {
+type Rng = () => number;
+
+function makeRandomPosition(rng: Rng): Vec3 {
   const spread = 200;
   return vec3(
-    (Math.random() - 0.5) * spread,
-    (Math.random() - 0.5) * spread,
-    (Math.random() - 0.5) * spread
+    (rng() - 0.5) * spread,
+    (rng() - 0.5) * spread,
+    (rng() - 0.5) * spread
   );
 }
 
 /**
  * Run force-directed layout on extracted nodes and edges.
- * Returns nodes with { x, y, z } positions.
+ * Returns nodes with { x, y, z } positions (preserves all input fields).
+ *
+ * @param seed Optional uint32 / string seed for deterministic layouts.
+ *   Strings (typically a canvasId) are hashed via `seedFromString`.
+ *   When omitted, falls back to `Math.random()` for back-compat.
  */
-export function forceLayout(
-  nodes: ExtractedNode[],
-  edges: ExtractedEdge[]
-): PositionedNode[] {
+export function forceLayout<
+  N extends LayoutNodeLike,
+  E extends LayoutEdgeLike,
+>(
+  nodes: N[],
+  edges: E[],
+  seed?: string | number,
+): (N & { x: number; y: number; z: number })[] {
   if (nodes.length === 0) return [];
 
+  // Seeded RNG when a seed is provided; otherwise fall back to
+  // Math.random so existing call sites (and tests that don't care
+  // about determinism) keep working.
+  const rng: Rng =
+    seed === undefined
+      ? Math.random
+      : mulberry32(typeof seed === 'string' ? seedFromString(seed) : seed >>> 0);
+
   // Initialize positions randomly
-  const positions: Vec3[] = nodes.map(() => randomPosition());
+  const positions: Vec3[] = nodes.map(() => makeRandomPosition(rng));
   const velocities: Vec3[] = nodes.map(() => vec3());
 
   // Build adjacency for quick lookup
@@ -112,7 +147,11 @@ export function forceLayout(
       if (srcIdx === -1 || tgtIdx === -1) continue;
 
       const diff = sub(positions[tgtIdx], positions[srcIdx]);
-      const dist = length(diff);
+      // Floor distance at MIN_DISTANCE to keep the spring term sane when
+      // two connected nodes have collapsed onto the same point — without
+      // this, an unlucky seed can drive `dir` to zero AND `attForce` to
+      // -idealDist*k, leaving the pair frozen on top of each other.
+      const dist = Math.max(MIN_DISTANCE, length(diff));
       const idealDist = 100;
       const attForce = (dist - idealDist) * ATTRACTION_STRENGTH;
       const dir = normalize(diff);

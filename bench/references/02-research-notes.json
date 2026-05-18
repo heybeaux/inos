@@ -1,0 +1,120 @@
+{
+  "fixtureId": "02-research-notes",
+  "description": "Personal research notes investigating mobile Safari checkout conversion drop; weighs four hypotheses and lands tentatively on Apple Pay silent failure.",
+  "format": "raw",
+  "topic": "Mobile Safari checkout conversion drop",
+  "nodes": [
+    {
+      "id": "q-safari-conversion-drop",
+      "type": "question",
+      "title": "Why does our checkout conversion drop on mobile Safari?",
+      "aliases": ["mobile Safari conversion drop", "Safari checkout conversion"]
+    },
+    {
+      "id": "fact-safari-conversion",
+      "type": "fact",
+      "title": "Mobile Safari conversion is 2.1% vs mobile Chrome 3.4%",
+      "aliases": ["2.1% vs 3.4%", "Safari converting at 2.1%"]
+    },
+    {
+      "id": "fact-desktop-tied",
+      "type": "fact",
+      "title": "Desktop Safari and Chrome conversion are effectively tied (4.6% vs 4.7%)",
+      "aliases": ["desktop Safari vs Chrome", "4.6% vs 4.7%"]
+    },
+    {
+      "id": "fact-lcp-gap",
+      "type": "fact",
+      "title": "Mobile Safari p75 LCP is 4.8s vs 2.9s on mobile Chrome",
+      "aliases": ["LCP 4.8s", "p75 LCP", "Speed Insights"]
+    },
+    {
+      "id": "fact-stripe-error-rate",
+      "type": "fact",
+      "title": "11% of mobile Safari sessions hit a stripe.js network error vs 1.3% on mobile Chrome",
+      "aliases": ["11% network error", "stripe.js network error"]
+    },
+    {
+      "id": "fact-applepay-launch",
+      "type": "fact",
+      "title": "Apple Pay button was added 6 weeks ago; conversion drop began ~5 weeks ago",
+      "aliases": ["Apple Pay launched 6 weeks ago", "tight temporal correlation"]
+    },
+    {
+      "id": "h1-itp-storage",
+      "type": "claim",
+      "title": "H1: ITP / Storage Access API blocks Stripe iframe third-party cookie",
+      "aliases": ["ITP blocking Stripe", "Storage Access API", "H1"]
+    },
+    {
+      "id": "h2-lcp-rage-quit",
+      "type": "claim",
+      "title": "H2: Slow LCP causes users to bounce before checkout",
+      "aliases": ["LCP rage-quit", "slow LCP", "H2"]
+    },
+    {
+      "id": "h3-applepay-silent-fail",
+      "type": "claim",
+      "title": "H3: Apple Pay button renders but the sheet fails silently on a subset of iOS users",
+      "aliases": ["Apple Pay failing silently", "H3", "Apple Pay silent failure"]
+    },
+    {
+      "id": "h4-low-intent-traffic",
+      "type": "claim",
+      "title": "H4: We have more low-intent iOS traffic (composition effect)",
+      "aliases": ["low-intent traffic", "composition not browser", "H4"]
+    },
+    {
+      "id": "challenge-h2-funnel-shape",
+      "type": "evidence",
+      "title": "Funnel arrival rates are similar across browsers; the drop is in-funnel, not pre-funnel",
+      "aliases": ["drop is between arrival and submit", "similar arrival rates"]
+    },
+    {
+      "id": "challenge-h4-utm-stable",
+      "type": "evidence",
+      "title": "UTM sources are stable; mobile Safari source mix hasn't shifted",
+      "aliases": ["UTM sources stable", "source mix unchanged"]
+    },
+    {
+      "id": "assumption-server-side-fine",
+      "type": "assumption",
+      "title": "Server-side PaymentIntent path is healthy; issue is client-side",
+      "aliases": ["client-side issue", "PaymentIntent create rate normal"]
+    },
+    {
+      "id": "decision-applepay-holdout",
+      "type": "decision",
+      "title": "Run a one-week 50/50 A/B holdout hiding the Apple Pay button for mobile Safari",
+      "aliases": ["Apple Pay holdout", "hide Apple Pay button", "A/B test next week"]
+    },
+    {
+      "id": "open-q-fix",
+      "type": "question",
+      "title": "If H3 is right, what is the fix — re-verify merchant domain, wait for Stripe, or detect failure and offer card entry?",
+      "aliases": ["what is the fix", "Apple Pay fix question"]
+    }
+  ],
+  "edges": [
+    { "type": "supports", "source": "fact-safari-conversion", "target": "q-safari-conversion-drop" },
+    { "type": "supports", "source": "fact-desktop-tied", "target": "q-safari-conversion-drop" },
+    { "type": "supports", "source": "fact-stripe-error-rate", "target": "h1-itp-storage" },
+    { "type": "supports", "source": "fact-lcp-gap", "target": "h2-lcp-rage-quit" },
+    { "type": "challenges", "source": "challenge-h2-funnel-shape", "target": "h2-lcp-rage-quit" },
+    { "type": "supports", "source": "fact-applepay-launch", "target": "h3-applepay-silent-fail" },
+    { "type": "challenges", "source": "challenge-h4-utm-stable", "target": "h4-low-intent-traffic" },
+    { "type": "supports", "source": "assumption-server-side-fine", "target": "h3-applepay-silent-fail" },
+    { "type": "diverges", "source": "h1-itp-storage", "target": "h3-applepay-silent-fail" },
+    { "type": "diverges", "source": "h2-lcp-rage-quit", "target": "h3-applepay-silent-fail" },
+    { "type": "supports", "source": "h3-applepay-silent-fail", "target": "decision-applepay-holdout" },
+    { "type": "depends_on", "source": "open-q-fix", "target": "h3-applepay-silent-fail" }
+  ],
+  "expectedTypeCounts": {
+    "question": 2,
+    "fact": 5,
+    "claim": 4,
+    "evidence": 2,
+    "assumption": 1,
+    "decision": 1
+  }
+}

@@ -6,21 +6,37 @@ import type { NodeType, EdgeType } from '@heybeaux/inos-types';
 
 // --- Raw extraction from LLM (before conversion to InosGraph) ---
 
+// Aligned with packages/types NodeType — multi-pass extraction needs the
+// full enum (especially insight/branch/constraint which the reference
+// graphs use heavily).
 export type ExtractedNodeType =
   | 'claim'
   | 'question'
   | 'decision'
   | 'evidence'
   | 'fact'
-  | 'assumption';
+  | 'assumption'
+  | 'insight'
+  | 'branch'
+  | 'constraint'
+  | 'deliberation'
+  | 'synthesis'
+  | 'artifact';
 
+// Aligned with packages/types EdgeType — adds replaces/merges/inherits/
+// temporal which solo-thinking content (esp. self-debate / position
+// reversals) genuinely needs.
 export type ExtractedEdgeType =
   | 'supports'
   | 'challenges'
   | 'diverges'
   | 'depends_on'
   | 'refines'
-  | 'references';
+  | 'references'
+  | 'replaces'
+  | 'merges'
+  | 'inherits'
+  | 'temporal';
 
 export interface ExtractedNode {
   /** Stable id used within the extraction result (refs between nodes/edges) */
@@ -36,6 +52,8 @@ export interface ExtractedNode {
   dependsOn: string[];
   /** Stable key for fact nodes (e.g. 'hydrothermal_vents_year') */
   factKey?: string;
+  /** Verbatim source excerpt (5-40 words). Offsets are computed post-hoc. */
+  excerpt?: string;
 }
 
 export interface ExtractedEdge {
@@ -85,6 +103,16 @@ export interface IngestStats {
   factsExtracted: number;
   decisionsExtracted: number;
   questionsExtracted: number;
+  /** Edges dropped by the validator for referencing unknown node ids. */
+  edgesDropped: number;
+  /** Number of nodes that resolved to a verifiable source span. */
+  nodesWithSpan: number;
+  /**
+   * Non-fatal warnings surfaced during extraction (e.g. consolidation
+   * timed out after retries, recovery pass failed but earlier passes
+   * succeeded). Empty array on a fully clean run.
+   */
+  parseWarnings?: string[];
 }
 
 export interface IngestResponse {

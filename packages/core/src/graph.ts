@@ -1,9 +1,12 @@
 import type { InosGraph, InosNode, InosEdge } from '@heybeaux/inos-types';
+import * as graphology from 'graphology';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const graphology = require('graphology');
-
-const Graph = graphology.default ?? graphology.Graph ?? graphology;
+// graphology ships as CJS with the constructor on `default`. Using a
+// namespace import (instead of `require`) keeps the module browser-safe
+// — bundlers won't inject a `require` shim that breaks in Safari.
+type GraphCtor = new (options?: Record<string, unknown>) => unknown;
+const Graph = ((graphology as unknown as { default?: GraphCtor }).default
+  ?? (graphology as unknown as GraphCtor)) as GraphCtor;
 
 export class InosGraphEngine {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

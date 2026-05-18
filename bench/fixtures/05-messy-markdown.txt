@@ -1,0 +1,97 @@
+# Feature flag service: build vs LaunchDarkly
+
+Notes-while-thinking. Will probably contradict myself in places — that's fine, the point is to think out loud.
+
+## The actual question
+
+We have ~40 feature flags right now, scattered across env vars, a hand-rolled `flags.ts` in the app, and some `if (user.tier === 'pro')` gates inline in components. It's getting unmanageable. I want a real flag system. The question is: build one in-house, or pay LaunchDarkly $???/year.
+
+## LaunchDarkly pricing — quick facts
+
+- Starter is $10/seat/month — capped at limited features
+- "Foundation" tier is $20/seat/month
+- "Pro" is real money — ~$0.55/MAU after the first 1k MAU
+- We have 12k MAU. So ~$6k/month at the Pro tier or ~$72k/year. Plus per-seat for the engineering team using it. Call it $80-90k/year all-in.
+
+Source: their pricing page Jan 2026, but their reps will probably negotiate.
+
+## Build cost — rough sketch
+
+- Storage: just a Postgres table. `flag_definitions` and `flag_evaluations`. ~1 day.
+- Server-side SDK: a Node package that fetches flag state, caches it for 30s, evaluates rules. ~3 days.
+- Client-side SDK: similar but with the wrinkle that we don't want flag values shipped in the bundle. ~3 days.
+- Targeting rules: user attribute matching, percentage rollouts, "force on for these user IDs". The hard one is percentage rollouts because you need stable bucketing (e.g. murmur3 hash of `user_id + flag_key`). ~2 days.
+- Admin UI: list flags, toggle them, see who has access. ~5 days.
+- Audit log: who changed which flag when. ~1 day.
+- Webhooks / event stream for flag changes. ~2 days.
+
+Total: ~17 engineering days. Call it 4 weeks with realistic interruption. Plus ongoing maintenance — figure 1 day/month forever.
+
+```ts
+// rough SDK shape
+const flags = createFlagsClient({ url: '...', apiKey: '...' });
+const isOn = await flags.isEnabled('new-checkout', { userId, plan });
+```
+
+## Tentative position: build it
+
+Reasoning:
+- $80k/year is a real number. That's 0.4 of an engineer.
+- We don't need 80% of what LaunchDarkly does. We need on/off, percentage rollouts, and user-attribute targeting. That's it.
+- We're a thinking-tools product, not a feature-flag-heavy SaaS. We won't add 40 new flags a quarter — we'll add maybe 5.
+- The interfaces are well-understood. This isn't research, it's plumbing.
+
+## Counter-argument: the parts I'm underestimating
+
+Things I keep handwaving past:
+- **Drift between client and server flag state.** When you change a flag, the user might see the old state for up to your cache TTL. LaunchDarkly's streaming SDK avoids this — long-poll/SSE that pushes updates. Mine would need that too if we care about consistency. That's not 1 extra day, that's maybe a week of careful work.
+- **The "kill switch" problem.** When a flag is being used to gate a broken feature, you want it OFF in seconds, globally, with no caching. That requires either no cache at all (expensive in QPS) or a fast invalidation path (more code).
+- **The audit/compliance story.** If we ever sell to enterprise, "we have full audit logs of who changed which flag when" is a real check-the-box. LaunchDarkly's audit log is SOC2-ready out of the box. Ours would be a Postgres table I built that nobody has audited.
+- **Targeting rules get complicated.** "Pro plan users in the EU on iOS, except those who signed up before March 2025." I keep telling myself we won't need this. We might. And every time we don't have it, someone writes `if (user.plan === 'pro' && user.region === 'EU' && ...)` inline, which is exactly the mess we're trying to escape.
+
+TODO: actually count the targeting rules we have in production code right now and project forward 12 months.
+
+## Wait — I want to reverse myself
+
+Reading back what I just wrote, I think I was too quick to say "build it." The maintenance cost compounds. Every time we hire an engineer, they need to learn our flag system instead of a system they probably already know. Every time we have an incident, "is it a flag issue?" requires us to debug our own infra instead of looking at a vendor dashboard.
+
+The $80k/year is the wrong frame. The right frame is "what's the all-in cost of build over 3 years vs buy over 3 years."
+
+- Buy: $80k × 3 = $240k
+- Build: 17 days × $1500/day (loaded eng cost) = $25.5k initial, plus 12 days/year maintenance × 3 = $54k. Total ~$80k over 3 years.
+
+That looks like build wins 3:1. But that math is missing:
+- Opportunity cost of the 17 days (could be building features that drive revenue)
+- The "you'll spend 2x what you estimated" effect that has been TRUE every single time I've estimated infra work
+- The cost of one production incident caused by a flag-system bug (could be 5 figures easily)
+
+Realistic numbers: build is probably $150-180k over 3 years if I'm honest about the 2x multiplier and one incident. That's still cheaper than buy, but the margin is much smaller than the 3:1 ratio suggested.
+
+## The framing that actually flips it
+
+I just realized something. The reason I was anchored on "build" is that I was thinking of it as an infrastructure decision. But the real question is a PRODUCT decision: do I want to spend the next 4 weeks shipping product, or shipping a feature flag system that lets me ship product slightly better in the future?
+
+If I'm being honest about what I should be spending engineering on for the next 4 weeks, "feature flag service" is not in the top five. The thinking-graph visualization, the onboarding rebuild (per the journal entry from March 15), the export-to-Obsidian integration, and two performance issues are all more important.
+
+Buying LaunchDarkly is a way to spend dollars to save weeks. At our stage, weeks are scarcer than dollars.
+
+## Updated tentative position: buy LaunchDarkly
+
+Reverses my earlier "build it" position. I'm aware these two sections contradict each other — that's the point of writing it out. The contradiction is useful: the "build it" reasoning was correct on the surface metrics (cost) but wrong on the opportunity cost. The "buy" reasoning is correct on the opportunity cost but means I'm spending real money.
+
+I'll go with LaunchDarkly on a 1-year contract. The 1-year contract is important — if in a year we've outgrown them on cost OR we have free engineering capacity for plumbing work, we revisit.
+
+## TODOs
+
+- [ ] Pricing call with LD this Friday
+- [ ] Ask if they have an "early stage" tier I haven't seen on the pricing page
+- [ ] Spec out the migration plan from current `flags.ts` → LD
+- [ ] Decide: do we migrate all 40 flags or just new ones?
+- [ ] Document the reversal conditions for re-evaluating in 12 months
+- [ ] Link to LaunchDarkly competitors for comparison: <https://docs.launchdarkly.com/competitive> (probably biased), Statsig, GrowthBook (open-source self-hosted — actually interesting), Unleash
+
+## Open question — not resolving today
+
+GrowthBook is open-source, self-hostable, free for the OSS version. That changes the math significantly — it's "build" in the sense of "we operate it" but "buy" in the sense of "we don't write the code." I haven't seriously evaluated it. I should before signing with LD. Filing this for next week.
+
+Also wondering if I'm being too binary about build-vs-buy. Could we use LaunchDarkly for the gnarly stuff (percentage rollouts, targeting) and keep our existing `flags.ts` for the simple on/off cases? Probably not worth the complexity — two systems is worse than one.

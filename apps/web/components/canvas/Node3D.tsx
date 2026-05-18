@@ -204,7 +204,7 @@ export function Node3D({ node, position, isHovered, onHover, onLeave, onClick }:
       <Text
         position={[0, -0.9, 0]}
         fontSize={0.22}
-        color={isHovered || isSelected ? '#ffffff' : 'var(--text-secondary)'}
+        color={isHovered || isSelected ? '#ffffff' : '#94a3b8'}
         anchorX="center"
         anchorY="middle"
         maxWidth={3}

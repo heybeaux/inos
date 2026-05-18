@@ -2,13 +2,38 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import ingestionRoute from './routes/ingestion.js';
+import canvasesRoute from './routes/canvases.js';
+import {
+  authMiddleware,
+  bodyLimitMiddleware,
+  rateLimitMiddleware,
+} from './lib/auth.js';
+import { resolveCorsConfig } from './lib/cors-config.js';
 
 const app = new Hono();
 
-app.use('/*', cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true,
-}));
+// CORS (Issue #16) — allowed origins from env, with a sane localhost
+// default for dev. We use bearer tokens, not cookies, so credentials
+// are off.
+const { origins: ALLOWED_ORIGINS, credentials: CORS_CREDENTIALS } = resolveCorsConfig({
+  rawOrigins: process.env.INOS_ALLOWED_ORIGINS,
+  credentials: false,
+});
+
+app.use(
+  '/*',
+  cors({
+    origin: ALLOWED_ORIGINS,
+    credentials: CORS_CREDENTIALS,
+  }),
+);
+
+// Order matters: cap body size before parsing JSON, rate-limit before
+// auth (so unauthenticated floods can't pin a CPU on bcrypt-style work),
+// and check auth before anything actually mutates state.
+app.use('/*', bodyLimitMiddleware);
+app.use('/*', rateLimitMiddleware);
+app.use('/*', authMiddleware);
 
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
@@ -91,9 +116,14 @@ Rules:
 });
 
 app.route('', ingestionRoute);
+app.route('', canvasesRoute);
 
-const port = 4000;
-console.log(`Inos API server is running on port ${port}`);
-serve({ fetch: app.fetch, port });
+// Vitest imports this module to mount the routes — only auto-start when
+// we're not in a test context.
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  const port = Number(process.env.INOS_API_PORT ?? '4000');
+  console.log(`Inos API server is running on port ${port}`);
+  serve({ fetch: app.fetch, port });
+}
 
 export default app;

@@ -1,0 +1,130 @@
+{
+  "fixtureId": "05-messy-markdown",
+  "description": "Messy markdown notes that reverse position: from 'build feature flag service in-house' to 'buy LaunchDarkly'. Contains contradiction the extractor should detect and resolve via replaces edge.",
+  "format": "raw",
+  "topic": "Build vs buy feature flag service",
+  "nodes": [
+    {
+      "id": "q-build-vs-buy",
+      "type": "question",
+      "title": "Build a feature flag service in-house or adopt LaunchDarkly?",
+      "aliases": ["build vs buy feature flags", "feature flag service decision"]
+    },
+    {
+      "id": "fact-current-flag-state",
+      "type": "fact",
+      "title": "~40 feature flags scattered across env vars, hand-rolled flags.ts, and inline gates",
+      "aliases": ["40 feature flags", "scattered flag state", "flags.ts"]
+    },
+    {
+      "id": "fact-ld-pricing",
+      "type": "fact",
+      "title": "LaunchDarkly Pro tier is ~$0.55/MAU; at 12k MAU that's ~$72k/year plus seats (~$80-90k/year all-in)",
+      "aliases": ["LaunchDarkly pricing", "$80-90k/year", "$0.55/MAU"]
+    },
+    {
+      "id": "fact-build-estimate",
+      "type": "fact",
+      "title": "Initial build estimate ~17 engineering days (~4 weeks) plus ~1 day/month maintenance",
+      "aliases": ["17 days build", "4 weeks build", "build estimate"]
+    },
+    {
+      "id": "claim-build-cheaper",
+      "type": "claim",
+      "title": "Build is cheaper: ~$80k over 3 years vs $240k buy",
+      "aliases": ["build cheaper", "build wins 3:1", "$80k over 3 years"]
+    },
+    {
+      "id": "claim-need-only-basics",
+      "type": "claim",
+      "title": "We only need on/off, percentage rollouts, and user-attribute targeting — 20% of LaunchDarkly",
+      "aliases": ["only need basics", "20% of LaunchDarkly", "we don't need 80%"]
+    },
+    {
+      "id": "assumption-low-flag-velocity",
+      "type": "assumption",
+      "title": "We won't add many new flags (~5 per quarter, not 40)",
+      "aliases": ["low flag velocity", "5 per quarter"]
+    },
+    {
+      "id": "challenge-streaming-complexity",
+      "type": "claim",
+      "title": "Streaming updates / cache invalidation / kill-switch latency are harder than the 17-day estimate",
+      "aliases": ["streaming complexity", "kill switch problem", "cache invalidation"]
+    },
+    {
+      "id": "challenge-audit-soc2",
+      "type": "claim",
+      "title": "Enterprise sales eventually needs SOC2-ready audit logs that LD provides out of the box",
+      "aliases": ["SOC2 audit", "enterprise compliance", "audit logs"]
+    },
+    {
+      "id": "challenge-targeting-complexity",
+      "type": "claim",
+      "title": "Targeting rules get complicated (e.g. 'Pro plan, EU, iOS, signed up before March 2025')",
+      "aliases": ["targeting complexity", "complicated targeting rules"]
+    },
+    {
+      "id": "tentative-build-position",
+      "type": "claim",
+      "title": "Tentative position: build it in-house",
+      "aliases": ["tentative build", "go with build"]
+    },
+    {
+      "id": "insight-opportunity-cost",
+      "type": "insight",
+      "title": "Real frame is opportunity cost: 4 weeks of engineering not spent on product features",
+      "aliases": ["opportunity cost", "weeks scarcer than dollars", "opportunity cost frame"]
+    },
+    {
+      "id": "insight-2x-multiplier",
+      "type": "insight",
+      "title": "Infra estimates have historically been 2x too low; realistic build is $150-180k over 3 years",
+      "aliases": ["2x multiplier", "realistic build cost", "$150-180k"]
+    },
+    {
+      "id": "decision-buy-launchdarkly",
+      "type": "decision",
+      "title": "Buy LaunchDarkly on a 1-year contract",
+      "aliases": ["buy LaunchDarkly", "go with LaunchDarkly", "1-year contract"]
+    },
+    {
+      "id": "reversal-conditions",
+      "type": "constraint",
+      "title": "Revisit in 12 months if we've outgrown them on cost or have free engineering capacity",
+      "aliases": ["12-month reversal", "revisit in a year", "reversal conditions"]
+    },
+    {
+      "id": "open-q-growthbook",
+      "type": "question",
+      "title": "Should we seriously evaluate GrowthBook (OSS self-hosted) before signing with LaunchDarkly?",
+      "aliases": ["GrowthBook", "evaluate OSS self-hosted alternative"]
+    }
+  ],
+  "edges": [
+    { "type": "supports", "source": "fact-current-flag-state", "target": "q-build-vs-buy" },
+    { "type": "supports", "source": "fact-ld-pricing", "target": "tentative-build-position" },
+    { "type": "supports", "source": "fact-build-estimate", "target": "claim-build-cheaper" },
+    { "type": "supports", "source": "claim-build-cheaper", "target": "tentative-build-position" },
+    { "type": "supports", "source": "claim-need-only-basics", "target": "tentative-build-position" },
+    { "type": "depends_on", "source": "tentative-build-position", "target": "assumption-low-flag-velocity" },
+    { "type": "challenges", "source": "challenge-streaming-complexity", "target": "fact-build-estimate" },
+    { "type": "challenges", "source": "challenge-audit-soc2", "target": "tentative-build-position" },
+    { "type": "challenges", "source": "challenge-targeting-complexity", "target": "claim-need-only-basics" },
+    { "type": "supports", "source": "insight-opportunity-cost", "target": "decision-buy-launchdarkly" },
+    { "type": "supports", "source": "insight-2x-multiplier", "target": "decision-buy-launchdarkly" },
+    { "type": "challenges", "source": "insight-2x-multiplier", "target": "claim-build-cheaper" },
+    { "type": "replaces", "source": "decision-buy-launchdarkly", "target": "tentative-build-position" },
+    { "type": "refines", "source": "reversal-conditions", "target": "decision-buy-launchdarkly" },
+    { "type": "depends_on", "source": "open-q-growthbook", "target": "decision-buy-launchdarkly" }
+  ],
+  "expectedTypeCounts": {
+    "question": 2,
+    "fact": 3,
+    "claim": 6,
+    "assumption": 1,
+    "insight": 2,
+    "decision": 1,
+    "constraint": 1
+  }
+}

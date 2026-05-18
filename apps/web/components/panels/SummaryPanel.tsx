@@ -24,7 +24,7 @@ export function SummaryPanel() {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 400, opacity: 0 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-14 right-0 bottom-0 w-96 z-20 overflow-y-auto p-4"
+      className="fixed top-12 sm:top-14 right-0 bottom-0 w-full sm:w-96 z-20 overflow-y-auto p-4"
       style={{ background: 'rgba(10, 10, 26, 0.95)', borderLeft: '1px solid var(--surface-glass-border)' }}
     >
       <div className="flex items-center justify-between mb-6">

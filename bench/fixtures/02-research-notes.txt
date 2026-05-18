@@ -1,0 +1,63 @@
+# Why does our checkout conversion drop on mobile Safari?
+
+Pulling on this thread because last week's GA4 export showed mobile Safari converting at 2.1% while mobile Chrome converts at 3.4% on the same /checkout route. Desktop Safari and Chrome are within noise of each other (4.6% vs 4.7%). So this is a mobile-Safari-specific drop, not a Safari-engine thing in general.
+
+## What we know (facts)
+
+- Mobile Safari conversion: 2.1% (last 28 days, GA4, n=41,203 sessions on /checkout)
+- Mobile Chrome conversion: 3.4% (same window, n=58,910)
+- Desktop Safari vs Chrome: 4.6% vs 4.7% — effectively tied
+- iOS Safari is ~46% of our mobile traffic, so this matters at the revenue line
+- Stripe Elements is our payment form. We're on stripe-js v3, loaded as `<script async>` in `_document.tsx`
+- p75 LCP on mobile Safari /checkout is 4.8s. On mobile Chrome it's 2.9s. (Vercel Speed Insights, last 7d)
+- Our Datadog RUM shows 11% of mobile Safari sessions hit a `stripe.js network error` event before the user clicks Pay. Chrome mobile is 1.3% for the same event.
+
+## Hypotheses
+
+### H1: ITP / Storage Access API is blocking Stripe's 3rd-party cookie
+
+Safari's Intelligent Tracking Prevention partitions storage for cross-site iframes (per the WebKit 2023 ITP changelog). Stripe Elements renders the card field in an iframe from `js.stripe.com`. If that iframe can't access its own first-party storage, the SDK retries and sometimes fails. The 11% network-error rate is suspicious — that's much higher than baseline 3xx/5xx rates from Stripe.
+
+Counter: Stripe documents this case and supposedly handles it. Their SDK is supposed to fall back gracefully. (per the Stripe 2024 paper on payment form reliability)
+
+But: "gracefully" might mean "the user gets a confusing error" — which would absolutely explain abandonment.
+
+### H2: LCP/CLS gap is causing rage-quits before they even start checkout
+
+Mobile Safari LCP is 4.8s vs 2.9s on Chrome. Even if Stripe works fine, that 1.9s delta is enough that some users bounce. Google's CrUX threshold for "good" LCP is 2.5s — we're failing it on Safari.
+
+Counter: but the abandonment happens AT the form, not before reaching it. GA4's funnel shows similar /checkout *arrival* rates on both browsers. The drop is between arrival and submit. So slow LCP would explain bounces but not the in-funnel drop.
+
+Refinement: maybe LCP is a distractor here. The real signal is the in-page Stripe issue. Note for later: don't conflate "page slow" with "form broken."
+
+### H3: Apple Pay button is rendering but failing silently
+
+We added the Apple Pay button via Stripe's PaymentRequestButton 6 weeks ago. The conversion drop appears to start ~5 weeks ago in the GA4 data (eyeballing the daily series). Tight temporal correlation.
+
+If `canMakePayment()` returns true but the actual sheet fails to present (a known iOS thing when the merchant domain isn't verified for that user's iCloud account), users see a button, tap it, get nothing, and leave.
+
+Sources: Apple's "Apple Pay on the Web — Common Errors" doc lists this exact failure mode. Stripe's GitHub issue #6182 has 40+ confirmed reports.
+
+This is the hypothesis I find most compelling because the temporal correlation is strong AND it predicts the exact funnel shape we're seeing (high arrival, low submit).
+
+### H4: We just have more low-intent traffic on iOS
+
+Maybe a TikTok or Instagram campaign drove low-intent iOS traffic and the drop is composition, not browser.
+
+Counter: I checked. UTM sources are stable across the period. Source mix on mobile Safari hasn't shifted >2pp in any channel.
+
+## Cross-checks
+
+- (Postgres docs, MVCC) — not relevant, was looking at DB-side write contention but checkout writes are <50ms p95, not the bottleneck
+- Looked at our error logs server-side: PaymentIntent create rate is normal. The issue is client-side, before we even try to charge.
+- Talked to one user via the support inbox who said "the pay button did nothing" on her iPhone. Anecdote, but consistent with H3.
+
+## Tentative conclusion
+
+H3 (Apple Pay button failing silently on a subset of iOS Safari users) is the most likely primary cause, with H1 (ITP/storage on Stripe iframe) as a secondary contributor explaining the elevated network-error rate. H2 (slow LCP) is real but not the dominant explanation.
+
+Next step: temporarily hide the Apple Pay button for 50% of mobile Safari sessions and measure. If conversion recovers to ~3% on the holdout, H3 is confirmed. Targeting a one-week A/B starting Monday.
+
+Open question: even if H3 is right, what's the fix? Re-verify our merchant domain with Apple? Wait for Stripe to ship a smarter fallback? Detect failure client-side and offer card entry as a backup? Probably the last one — most controllable.
+
+I'm parking H1 for now. If the Apple Pay holdout doesn't fully recover Safari conversion, that's when I come back to ITP.

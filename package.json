@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "ingest:bench": "pnpm --filter @heybeaux/inos-bench bench"
   },
   "devDependencies": {
     "pnpm": "^9.1.0",

@@ -1,0 +1,116 @@
+{
+  "fixtureId": "01-ai-conversation-log",
+  "description": "Solo thinker deliberates Redshift -> Snowflake migration with an AI assistant; concludes that the real problem is schema, not warehouse choice.",
+  "format": "auto",
+  "topic": "Redshift to Snowflake migration deliberation",
+  "nodes": [
+    {
+      "id": "q-migrate-snowflake",
+      "type": "question",
+      "title": "Should we migrate our analytics pipeline from Redshift to Snowflake?",
+      "aliases": ["migrate from Redshift to Snowflake", "Redshift vs Snowflake"]
+    },
+    {
+      "id": "fact-redshift-cost",
+      "type": "fact",
+      "title": "Redshift cluster costs $14k/month",
+      "aliases": ["$14k/month", "14000 per month"]
+    },
+    {
+      "id": "fact-p95-28s",
+      "type": "fact",
+      "title": "Growth dashboard queries have p95 latency of 28 seconds",
+      "aliases": ["p95 around 28 seconds", "p95 28s"]
+    },
+    {
+      "id": "fact-cluster-config",
+      "type": "fact",
+      "title": "Cluster is ra3.4xlarge x 4 nodes with dist key event_user_id and sort key event_timestamp",
+      "aliases": ["ra3.4xlarge", "dist key event_user_id", "sort key event_timestamp"]
+    },
+    {
+      "id": "fact-rollup-scan",
+      "type": "fact",
+      "title": "Daily-rollup query scans 90 days (~1.8B rows) with JOINs against campaigns and users dimensions",
+      "aliases": ["1.8B rows", "90 days of events", "hash join"]
+    },
+    {
+      "id": "claim-snowflake-faster",
+      "type": "claim",
+      "title": "Snowflake is faster for our kind of workload",
+      "aliases": ["Snowflake is faster", "Snowflake performs better"]
+    },
+    {
+      "id": "assumption-real-problem-warehouse",
+      "type": "assumption",
+      "title": "The real problem is the choice of warehouse",
+      "aliases": ["the problem is Redshift", "warehouse choice is the issue"]
+    },
+    {
+      "id": "insight-schema-is-problem",
+      "type": "insight",
+      "title": "The actual problem is the schema, not Redshift",
+      "aliases": ["schema is the problem", "fix the schema instead of migrating"]
+    },
+    {
+      "id": "opt-fix-schema",
+      "type": "branch",
+      "title": "Option 1: Fix the schema (pre-aggregated rollup) and keep Redshift",
+      "aliases": ["fix the schema", "pre-agg table", "Option 1"]
+    },
+    {
+      "id": "opt-migrate-snowflake",
+      "type": "branch",
+      "title": "Option 2: Migrate to Snowflake",
+      "aliases": ["migrate to Snowflake", "Option 2"]
+    },
+    {
+      "id": "opt-lakehouse",
+      "type": "branch",
+      "title": "Option 4: Lakehouse pattern with Iceberg on S3 plus Athena or DuckDB",
+      "aliases": ["lakehouse", "Iceberg on S3", "Athena or DuckDB"]
+    },
+    {
+      "id": "decision-fix-schema",
+      "type": "decision",
+      "title": "Choose Option 1: fix the schema now, defer Snowflake decision until Q3",
+      "aliases": ["go with Option 1", "fix schema first", "defer Snowflake"]
+    },
+    {
+      "id": "constraint-data-growth",
+      "type": "constraint",
+      "title": "Events table will keep growing; cost trajectory ~$20k/month in 12 months",
+      "aliases": ["data volume growth", "$20k/month in 12 months"]
+    },
+    {
+      "id": "reversal-condition",
+      "type": "constraint",
+      "title": "Would reverse to migrate if rollup is still slow, team grows past 5 people, or partner data sharing is needed",
+      "aliases": ["reversal conditions", "would flip back to migrate"]
+    }
+  ],
+  "edges": [
+    { "type": "supports", "source": "fact-redshift-cost", "target": "q-migrate-snowflake" },
+    { "type": "supports", "source": "fact-p95-28s", "target": "q-migrate-snowflake" },
+    { "type": "supports", "source": "claim-snowflake-faster", "target": "opt-migrate-snowflake" },
+    { "type": "challenges", "source": "insight-schema-is-problem", "target": "assumption-real-problem-warehouse" },
+    { "type": "supports", "source": "fact-rollup-scan", "target": "insight-schema-is-problem" },
+    { "type": "supports", "source": "fact-cluster-config", "target": "insight-schema-is-problem" },
+    { "type": "supports", "source": "insight-schema-is-problem", "target": "opt-fix-schema" },
+    { "type": "diverges", "source": "opt-fix-schema", "target": "opt-migrate-snowflake" },
+    { "type": "diverges", "source": "opt-lakehouse", "target": "opt-fix-schema" },
+    { "type": "supports", "source": "opt-fix-schema", "target": "decision-fix-schema" },
+    { "type": "challenges", "source": "constraint-data-growth", "target": "decision-fix-schema" },
+    { "type": "refines", "source": "reversal-condition", "target": "decision-fix-schema" }
+  ],
+  "expectedTypeCounts": {
+    "question": 1,
+    "fact": 4,
+    "claim": 1,
+    "assumption": 1,
+    "insight": 1,
+    "branch": 3,
+    "decision": 1,
+    "constraint": 2
+  }
+}

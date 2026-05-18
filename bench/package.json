@@ -1,0 +1,16 @@
+{
+  "name": "@heybeaux/inos-bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "tsx src/run.ts"
+  },
+  "dependencies": {
+    "@heybeaux/inos-types": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5"
+  }
+}

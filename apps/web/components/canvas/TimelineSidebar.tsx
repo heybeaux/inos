@@ -11,15 +11,15 @@ import { useGraphStore, getNodeColor } from '@/lib/store';
 export function TimelineSidebar() {
   const { nodes, edges, timelineProgress, setTimelineProgress, visibleNodeIds, focusNode, activePanel } = useGraphStore();
 
-  // Only show when timeline panel is active
-  if (activePanel !== 'timeline' || nodes.length === 0) return null;
-
+  // NOTE: hooks must run on every render — keep them above any early
+  // return. The visibility check happens at the bottom.
   const sortedNodes = useMemo(
     () => [...nodes].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [nodes]
   );
 
   const dateRange = useMemo(() => {
+    if (nodes.length === 0) return { min: 0, max: 0 };
     const ts = nodes.map((n) => new Date(n.createdAt).getTime());
     return { min: Math.min(...ts), max: Math.max(...ts) };
   }, [nodes]);
@@ -33,6 +33,9 @@ export function TimelineSidebar() {
     });
     return Array.from(map.entries());
   }, [sortedNodes]);
+
+  // Only show when timeline panel is active
+  if (activePanel !== 'timeline' || nodes.length === 0) return null;
 
   return (
     <AnimatePresence>

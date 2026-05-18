@@ -1,0 +1,123 @@
+{
+  "fixtureId": "04-self-debate",
+  "description": "Author argues with themselves about open-sourcing the core ranking algorithm; refines a naive yes into a 'write blog posts, not code, revisit at Series B'.",
+  "format": "raw",
+  "topic": "Open-source the core ranking algorithm?",
+  "nodes": [
+    {
+      "id": "q-open-source",
+      "type": "question",
+      "title": "Should we open-source our core ranking algorithm?",
+      "aliases": ["open-source the algorithm", "open source ranking"]
+    },
+    {
+      "id": "claim-recruiting-magnet",
+      "type": "claim",
+      "title": "Open-sourcing would be a recruiting magnet no marketing budget can buy",
+      "aliases": ["recruiting magnet", "engineers recognize the algorithm"]
+    },
+    {
+      "id": "claim-schelling-point",
+      "type": "claim",
+      "title": "Open-sourcing creates a Schelling point — we become the industry default reference",
+      "aliases": ["Schelling point", "industry default reference"]
+    },
+    {
+      "id": "claim-algorithm-is-product",
+      "type": "claim",
+      "title": "The algorithm IS the product; open-sourcing hands competitors three years of work",
+      "aliases": ["algorithm is the product", "hand competitors our moat"]
+    },
+    {
+      "id": "challenge-algorithm-not-product",
+      "type": "claim",
+      "title": "The product is the experience (data, integrations, trust, UX); the algorithm is one ingredient",
+      "aliases": ["product is the experience", "algorithm is one ingredient"]
+    },
+    {
+      "id": "refine-median-competitor",
+      "type": "insight",
+      "title": "Open-sourcing doesn't change elite-competitor threat, but expands the median-competitor surface",
+      "aliases": ["median competitor", "competitive surface area expands"]
+    },
+    {
+      "id": "claim-restrictive-license",
+      "type": "claim",
+      "title": "Use SSPL/AGPL/Elastic License to prevent commercial competitive use",
+      "aliases": ["SSPL", "AGPL", "restrictive license"]
+    },
+    {
+      "id": "challenge-license-worst-of-both",
+      "type": "claim",
+      "title": "Restrictive licenses get pushback — no recruiting magnet, no goodwill, no contributions",
+      "aliases": ["worst of both", "license pushback", "not really open-source"]
+    },
+    {
+      "id": "claim-open-boring-80",
+      "type": "claim",
+      "title": "Open-source the boring 80% (primitives) and keep the proprietary 20% (training data, hyperparameters)",
+      "aliases": ["open-source the boring 80%", "boring primitives", "keep proprietary 20%"]
+    },
+    {
+      "id": "challenge-boring-not-interesting",
+      "type": "insight",
+      "title": "If the boring parts are genuinely boring, they don't generate reputation lift; interesting OSS projects are the actual hard thing",
+      "aliases": ["boring not interesting", "interesting projects are the hard thing"]
+    },
+    {
+      "id": "assumption-primitives-are-interesting",
+      "type": "assumption",
+      "title": "Our core ranking primitives (separated from training data) are interesting enough to draw engineers",
+      "aliases": ["primitives are interesting", "honest answer is moderately"]
+    },
+    {
+      "id": "decision-write-blog-posts",
+      "type": "decision",
+      "title": "Write deep technical blog posts about the architecture and index format instead of open-sourcing",
+      "aliases": ["write blog posts not code", "deep technical blog posts"]
+    },
+    {
+      "id": "branch-revisit-at-series-b",
+      "type": "branch",
+      "title": "Revisit open-sourcing at next funding milestone when moat-vs-reputation tradeoff shifts",
+      "aliases": ["revisit at Series B", "next funding milestone"]
+    },
+    {
+      "id": "branch-fast-follow-competitor",
+      "type": "branch",
+      "title": "Fast-follow if a major competitor open-sources first (Vespa, Weaviate, Pinecone)",
+      "aliases": ["fast-follow", "competitor open-sources first"]
+    },
+    {
+      "id": "meta-risk-aversion",
+      "type": "insight",
+      "title": "Aware of bias risk: I may be dressing up risk aversion as analysis",
+      "aliases": ["risk aversion dressed up as analysis", "self-aware of bias"]
+    }
+  ],
+  "edges": [
+    { "type": "supports", "source": "claim-recruiting-magnet", "target": "q-open-source" },
+    { "type": "supports", "source": "claim-schelling-point", "target": "q-open-source" },
+    { "type": "challenges", "source": "claim-algorithm-is-product", "target": "claim-recruiting-magnet" },
+    { "type": "challenges", "source": "challenge-algorithm-not-product", "target": "claim-algorithm-is-product" },
+    { "type": "refines", "source": "refine-median-competitor", "target": "challenge-algorithm-not-product" },
+    { "type": "supports", "source": "claim-restrictive-license", "target": "claim-algorithm-is-product" },
+    { "type": "challenges", "source": "challenge-license-worst-of-both", "target": "claim-restrictive-license" },
+    { "type": "refines", "source": "claim-open-boring-80", "target": "q-open-source" },
+    { "type": "challenges", "source": "challenge-boring-not-interesting", "target": "claim-open-boring-80" },
+    { "type": "depends_on", "source": "claim-open-boring-80", "target": "assumption-primitives-are-interesting" },
+    { "type": "replaces", "source": "decision-write-blog-posts", "target": "claim-open-boring-80" },
+    { "type": "supports", "source": "challenge-boring-not-interesting", "target": "decision-write-blog-posts" },
+    { "type": "diverges", "source": "branch-revisit-at-series-b", "target": "decision-write-blog-posts" },
+    { "type": "diverges", "source": "branch-fast-follow-competitor", "target": "decision-write-blog-posts" },
+    { "type": "challenges", "source": "meta-risk-aversion", "target": "decision-write-blog-posts" }
+  ],
+  "expectedTypeCounts": {
+    "question": 1,
+    "claim": 7,
+    "insight": 3,
+    "assumption": 1,
+    "decision": 1,
+    "branch": 2
+  }
+}

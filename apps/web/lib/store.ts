@@ -80,6 +80,7 @@ interface GraphState {
   setToolbarPlacementMode: (mode: NodeType | null) => void;
   togglePanel: (panel: 'facts' | 'summary' | 'timeline') => void;
   handleCanvasClick: (screenX: number, screenY: number) => void;
+  newCanvas: (name?: string) => void;
 }
 
 function computeVisible(nodes: InosNode[], progress: number): Set<string> | null {
@@ -171,6 +172,21 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const { toolbarPlacementMode, addNode } = get();
     if (toolbarPlacementMode) { addNode({ type: toolbarPlacementMode, title: `New ${toolbarPlacementMode}`, content: '' }); set({ toolbarPlacementMode: null }); }
   },
+  newCanvas: (name) => set({
+    nodes: [],
+    edges: [],
+    canvasName: name ?? 'Untitled',
+    summary: null,
+    factsTable: null,
+    focusedNodeId: null,
+    hoveredNodeId: null,
+    selectedNodeId: null,
+    selectedNode: null,
+    visibleNodeIds: null,
+    timelineProgress: 100,
+    activePanel: 'none',
+    sidebarOpen: false,
+  }),
 }));
 
 export function getNodeColor(type: InosNode['type']): string {

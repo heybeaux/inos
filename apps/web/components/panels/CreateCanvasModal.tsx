@@ -56,8 +56,10 @@ export function CreateCanvasModal() {
                 <button
                   key={t.id}
                   onClick={() => {
-                    // For now, just load fresh demo data. Later: wire to actual canvas creation
-                    useGraphStore.getState().loadDemo();
+                    // "New" means an empty canvas. Templates are stubs for
+                    // a future seed-with-starter-nodes feature; for now they
+                    // all just clear the canvas with a template-named title.
+                    useGraphStore.getState().newCanvas(t.name);
                     setActivePanel('none');
                   }}
                   className="text-left p-3 rounded-lg transition-all"
@@ -83,7 +85,7 @@ export function CreateCanvasModal() {
               </button>
               <button
                 onClick={() => {
-                  useGraphStore.getState().loadDemo();
+                  useGraphStore.getState().newCanvas('Untitled');
                   setActivePanel('none');
                 }}
                 className="px-4 py-2 text-sm rounded-lg"

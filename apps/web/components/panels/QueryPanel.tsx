@@ -6,6 +6,9 @@ import { useGraphStore, getNodeColor } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_TOKEN = process.env.NEXT_PUBLIC_INOS_API_TOKEN ?? '';
+
 export function QueryPanel() {
   const { nodes, edges, activePanel, setActivePanel } = useGraphStore();
   const [query, setQuery] = useState('');
@@ -24,9 +27,12 @@ export function QueryPanel() {
     setUsedModel(null);
 
     try {
-      const resp = await fetch('http://localhost:4000/api/query', {
+      const resp = await fetch(`${API_BASE}/api/query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
+        },
         body: JSON.stringify({
           query: query.trim(),
           nodes: nodes.map((n) => ({
@@ -92,7 +98,7 @@ export function QueryPanel() {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 400, opacity: 0 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-14 right-0 bottom-0 w-96 z-20 overflow-y-auto p-4"
+      className="fixed top-12 sm:top-14 right-0 bottom-0 w-full sm:w-96 z-20 overflow-y-auto p-4"
       style={{ background: 'rgba(10, 10, 26, 0.95)', borderLeft: '1px solid var(--surface-glass-border)' }}
     >
       <div className="flex items-center justify-between mb-6">
