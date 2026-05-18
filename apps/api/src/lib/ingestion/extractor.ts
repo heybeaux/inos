@@ -730,6 +730,55 @@ function normalizeTitle(s: string): string {
 }
 
 /**
+ * Supplemental edge pass — wires up nodes that the original Pass-3 edge call
+ * did not see (typically nodes added by the Pass-4 recovery sweep). Returns
+ * ONLY genuinely new edges (deduped against `existingEdges`). Routed to the
+ * cheap validation model since the structural reasoning was already done by
+ * the main edge pass.
+ *
+ * Symmetric with `coerceEdge`: dedupes by (type, source, target).
+ */
+async function edgesForFullNodeSet(
+  text: string,
+  format: InputFormat,
+  allNodes: ExtractedNode[],
+  existingEdges: ExtractedEdge[],
+  model: string,
+): Promise<ExtractedEdge[]> {
+  if (allNodes.length === 0) return [];
+  const nodeIdSet = new Set(allNodes.map((n) => n.id));
+  const nodesJson = JSON.stringify(
+    allNodes.map((n) => ({ id: n.id, type: n.type, title: n.title })),
+    null,
+    2,
+  );
+  const raw = await callLLM({
+    prompt: buildEdgePrompt(format, text, nodesJson),
+    model,
+    maxTokens: 6000,
+    jsonSchema: { name: 'inos_edges_recovery', schema: edgesJsonSchema },
+    label: 'edges-post-recovery',
+  });
+  const parsed = safeParseObject<{ edges?: RawEdge[] }>(raw, 'edges-post-recovery');
+  const proposed = (parsed.edges ?? [])
+    .map((e) => coerceEdge(e, nodeIdSet))
+    .filter((e): e is ExtractedEdge => e !== null);
+
+  // Dedupe against existing edges by (type, source, target).
+  const seen = new Set(
+    existingEdges.map((e) => `${e.type}|${e.source}|${e.target}`),
+  );
+  const fresh: ExtractedEdge[] = [];
+  for (const e of proposed) {
+    const key = `${e.type}|${e.source}|${e.target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    fresh.push(e);
+  }
+  return fresh;
+}
+
+/**
  * Consolidation pass — used when input was chunked. Runs on Haiku.
  */
 async function consolidateChunks(
@@ -1030,6 +1079,34 @@ export async function extractAndBuildGraph(
   if (recovered.length > 0) {
     console.log(`[ingestion] Recovery added ${recovered.length} missed node(s)`);
     merged.nodes = [...merged.nodes, ...recovered];
+
+    // edgeRecall fix (#4): the original Pass-3 edge call ran BEFORE recovery,
+    // so any recovered node had zero incoming/outgoing edges. Catastrophic on
+    // fixtures where Pass 4 surfaces 2–3 load-bearing nodes (fixtures 04/05
+    // dropped to edgeRecall 0.22/0.18 from this alone). Re-run Pass 3 against
+    // the FULL merged node set so recovered nodes can be wired up. Edges are
+    // permitted to reference any node from any prior pass.
+    try {
+      const newEdges = await edgesForFullNodeSet(
+        text,
+        format,
+        merged.nodes,
+        merged.edges,
+        getValidationModel(),
+      );
+      if (newEdges.length > 0) {
+        console.log(
+          `[ingestion] Post-recovery edge pass added ${newEdges.length} edge(s)`,
+        );
+        merged.edges = [...merged.edges, ...newEdges];
+      }
+    } catch (err) {
+      // Best-effort: don't fail the whole ingestion if the supplemental
+      // edge call hiccups. The existing edges from Pass 3 are still good.
+      console.warn(
+        `[ingestion] Post-recovery edge pass failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   // Apply config filters (extractFacts=false etc.) AFTER recovery.
