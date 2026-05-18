@@ -221,4 +221,98 @@ describe('CascadeEngine', () => {
     expect(result.negatedNodeIds).toEqual(['negatedChild']);
     expect(result.orphanedNodeIds).toEqual(['orphanChild']);
   });
+
+  it('diamond dependency: A -> {B, C} -> D propagates D exactly once', () => {
+    const a = makeNode('a', {
+      staleness: {
+        state: 'stale',
+        evaluatedAt: '2026-01-02T00:00:00.000Z',
+        cascadeDepth: 0,
+      },
+    });
+    const b = makeNode('b', { dependsOn: ['a'] });
+    const c = makeNode('c', { dependsOn: ['a'] });
+    const d = makeNode('d', { dependsOn: ['b', 'c'] });
+    const graph = makeGraph([a, b, c, d]);
+
+    const result = new CascadeEngine(graph).cascade('a');
+
+    // D must appear exactly once.
+    const dOccurrences = result.affectedNodeIds.filter((id) => id === 'd');
+    expect(dOccurrences).toHaveLength(1);
+
+    // B and C must be evaluated before D in topological order.
+    const idxB = result.affectedNodeIds.indexOf('b');
+    const idxC = result.affectedNodeIds.indexOf('c');
+    const idxD = result.affectedNodeIds.indexOf('d');
+    expect(idxB).toBeGreaterThanOrEqual(0);
+    expect(idxC).toBeGreaterThanOrEqual(0);
+    expect(idxD).toBeGreaterThan(idxB);
+    expect(idxD).toBeGreaterThan(idxC);
+
+    // D inherits stale through both B and C.
+    expect(d.staleness.state).toBe('stale');
+    // Depth = max(B.depth, C.depth) + 1 = 2.
+    expect(d.staleness.cascadeDepth).toBe(2);
+  });
+
+  it('triggeredBy on transitive descendants points at the root cause', () => {
+    const a = makeNode('a', {
+      staleness: {
+        state: 'negated',
+        evaluatedAt: '2026-01-02T00:00:00.000Z',
+        cascadeDepth: 0,
+      },
+    });
+    const b = makeNode('b', { dependsOn: ['a'] });
+    const c = makeNode('c', { dependsOn: ['b'] });
+    const d = makeNode('d', { dependsOn: ['c'] });
+    const graph = makeGraph([a, b, c, d]);
+
+    new CascadeEngine(graph).cascade('a');
+
+    // Every transitive descendant should cite the original change ('a'),
+    // not its immediate parent.
+    expect(b.staleness.triggeredBy).toBe('a');
+    expect(c.staleness.triggeredBy).toBe('a');
+    expect(d.staleness.triggeredBy).toBe('a');
+  });
+
+  it('self-referential dependsOn does not cause an infinite loop', () => {
+    const selfRef = makeNode('selfRef', { dependsOn: ['selfRef'] });
+    const child = makeNode('child', { dependsOn: ['selfRef'] });
+    const graph = makeGraph([selfRef, child]);
+
+    const start = Date.now();
+    const result = new CascadeEngine(graph).cascade('selfRef');
+    const elapsed = Date.now() - start;
+
+    // Must terminate quickly and not include the trigger as its own
+    // dependent.
+    expect(elapsed).toBeLessThan(500);
+    expect(result.affectedNodeIds).not.toContain('selfRef');
+    expect(result.affectedNodeIds).toContain('child');
+  });
+
+  it('no-op cascade (no dependents) does not pollute the temporal index', () => {
+    const lonely = makeNode('lonely');
+    const sibling = makeNode('sibling'); // does NOT depend on lonely
+    const graph = makeGraph([lonely, sibling]);
+    const initialLen = graph.temporalIndex.length;
+
+    const result = new CascadeEngine(graph).cascade('lonely');
+
+    expect(result.affectedNodeIds).toEqual([]);
+    expect(graph.temporalIndex.length).toBe(initialLen);
+  });
+
+  it('repeated no-op cascades keep the temporal index bounded', () => {
+    const lonely = makeNode('lonely');
+    const graph = makeGraph([lonely]);
+    const engine = new CascadeEngine(graph);
+
+    for (let i = 0; i < 100; i++) engine.cascade('lonely');
+
+    expect(graph.temporalIndex.length).toBe(0);
+  });
 });

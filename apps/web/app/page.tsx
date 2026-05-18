@@ -16,6 +16,7 @@ import { ContextMenu } from '@/components/canvas/ContextMenu';
 import { InlineEditorContainer } from '@/components/nodes/InlineEditor';
 import { TimelineSidebar } from '@/components/canvas/TimelineSidebar';
 import { CreateCanvasModal } from '@/components/panels/CreateCanvasModal';
+import { CanvasErrorBoundary } from '@/components/canvas/CanvasErrorBoundary';
 
 // Dynamic import to avoid SSR issues with Three.js
 const Canvas3D = dynamic(() => import('@/components/canvas/Canvas3D'), {
@@ -181,7 +182,9 @@ export default function CanvasPage() {
         className="w-full h-full pt-14"
         onClick={handleContainerClick}
       >
-        <Canvas3D />
+        <CanvasErrorBoundary>
+          <Canvas3D />
+        </CanvasErrorBoundary>
       </div>
       <Legend />
 
