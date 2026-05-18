@@ -7,7 +7,12 @@
  *
  * This is a basic implementation — not a full physics engine.
  * Good enough for initial placement; the frontend can refine with d3-force-3d.
+ *
+ * Determinism: pass `seed` (typically derived from a canvasId) to get
+ * a reproducible layout. Without a seed, falls back to `Math.random()`
+ * for back-compat.
  */
+import { mulberry32, seedFromString } from '@heybeaux/inos-core';
 
 /**
  * Layout only needs `id` from each node and `source`/`target` from each
@@ -62,27 +67,45 @@ function normalize(v: Vec3): Vec3 {
   return { x: v.x / len, y: v.y / len, z: v.z / len };
 }
 
-function randomPosition(): Vec3 {
+type Rng = () => number;
+
+function makeRandomPosition(rng: Rng): Vec3 {
   const spread = 200;
   return vec3(
-    (Math.random() - 0.5) * spread,
-    (Math.random() - 0.5) * spread,
-    (Math.random() - 0.5) * spread
+    (rng() - 0.5) * spread,
+    (rng() - 0.5) * spread,
+    (rng() - 0.5) * spread
   );
 }
 
 /**
  * Run force-directed layout on extracted nodes and edges.
  * Returns nodes with { x, y, z } positions (preserves all input fields).
+ *
+ * @param seed Optional uint32 / string seed for deterministic layouts.
+ *   Strings (typically a canvasId) are hashed via `seedFromString`.
+ *   When omitted, falls back to `Math.random()` for back-compat.
  */
 export function forceLayout<
   N extends LayoutNodeLike,
   E extends LayoutEdgeLike,
->(nodes: N[], edges: E[]): (N & { x: number; y: number; z: number })[] {
+>(
+  nodes: N[],
+  edges: E[],
+  seed?: string | number,
+): (N & { x: number; y: number; z: number })[] {
   if (nodes.length === 0) return [];
 
+  // Seeded RNG when a seed is provided; otherwise fall back to
+  // Math.random so existing call sites (and tests that don't care
+  // about determinism) keep working.
+  const rng: Rng =
+    seed === undefined
+      ? Math.random
+      : mulberry32(typeof seed === 'string' ? seedFromString(seed) : seed >>> 0);
+
   // Initialize positions randomly
-  const positions: Vec3[] = nodes.map(() => randomPosition());
+  const positions: Vec3[] = nodes.map(() => makeRandomPosition(rng));
   const velocities: Vec3[] = nodes.map(() => vec3());
 
   // Build adjacency for quick lookup
