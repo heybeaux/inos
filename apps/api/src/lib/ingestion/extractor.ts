@@ -502,28 +502,54 @@ async function callLLM(opts: LLMCallOpts): Promise<string> {
 // --- JSON parsing helpers ---
 
 /**
- * Strip markdown fences and parse JSON. Returns the cleaned JSON string
- * (jsonStr) so callers can pass it to `ExtractionSchemaError.rawPayload`.
+ * Strip exactly one OUTER markdown code-fence pair if present and parse JSON.
+ *
+ * Why the old non-greedy regex was wrong (#14): the previous regex
+ *   /```(?:json)?\s*([\s\S]*?)```/
+ * matched the FIRST occurrence of "```" anywhere in the string, even if it
+ * appeared inside a JSON string value (e.g. a node `content` quoting a code
+ * block). Non-greedy `.*?` then ended at the FIRST closing "```", silently
+ * truncating the JSON. Now we only strip when the trimmed payload genuinely
+ * starts AND ends with a fence; otherwise we leave the raw text alone and
+ * let JSON.parse decide.
  */
 function stripFencesAndParse(raw: string): {
   parsedJson: unknown;
   jsonStr: string;
 } {
-  let jsonStr = raw.trim();
-
-  const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    jsonStr = codeBlockMatch[1].trim();
-  }
-
+  const jsonStr = stripCodeFence(raw);
   const parsedJson: unknown = JSON.parse(jsonStr);
   return { parsedJson, jsonStr };
 }
 
-function stripCodeFence(raw: string): string {
+/** @internal — exported for unit testing */
+export function stripCodeFence(raw: string): string {
   const trimmed = raw.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return fence ? fence[1].trim() : trimmed;
+
+  // Only strip if the WHOLE payload is wrapped in a single fence pair.
+  // Anything else (including a leading "```" with no matching trailing one,
+  // or fences embedded inside a JSON string value) is left alone — better
+  // to fail JSON.parse loudly than silently truncate.
+  if (!trimmed.startsWith('```')) return trimmed;
+
+  // Strip the opening fence line (e.g. "```" or "```json"). The fence line
+  // ends at the first newline; everything past it is the payload candidate.
+  const firstNewline = trimmed.indexOf('\n');
+  // A "```" with no newline before EOF is malformed — fall back to raw so
+  // JSON.parse surfaces the real problem.
+  if (firstNewline === -1) return trimmed;
+
+  const openerLine = trimmed.slice(0, firstNewline).trim();
+  // Opener must be just "```" or "```<lang>" with no other content.
+  if (!/^```[A-Za-z0-9_-]*$/.test(openerLine)) return trimmed;
+
+  const afterOpener = trimmed.slice(firstNewline + 1);
+
+  // Closing fence: trailing "```" (with optional surrounding whitespace).
+  if (!afterOpener.trimEnd().endsWith('```')) return trimmed;
+
+  const closingIdx = afterOpener.lastIndexOf('```');
+  return afterOpener.slice(0, closingIdx).trim();
 }
 
 /**
