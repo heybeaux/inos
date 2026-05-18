@@ -65,6 +65,12 @@ export interface PassMetrics {
   matchedNodesWithSpan: number;
   /** Matched nodes whose sourceSpan.excerpt verified as a substring. */
   matchedNodesWithVerifiedSpan: number;
+  /**
+   * Fraction of reference edges covered by a family-compatible extracted edge
+   * between mapped endpoints. Only populated by the semantic grader; the
+   * original grader leaves this undefined.
+   */
+  edgeRecall?: number;
 }
 
 export interface AggregateMetrics {
@@ -73,6 +79,8 @@ export interface AggregateMetrics {
   schemaValidRate: number;
   avgDurationMs: number;
   avgSpanCoverage: number;
+  /** Populated when the semantic grader is active. */
+  avgEdgeRecall?: number;
 }
 
 export interface BenchConfig {

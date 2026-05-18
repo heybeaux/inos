@@ -2,3 +2,12 @@ node_modules/
 dist/
 .next/
 *.tsbuildinfo
+
+# Local bench artifacts and ad-hoc dumps
+*.log
+bench/dump-*.json
+missed-*.txt
+ref-types-*.tsv
+fixture-*-fresh.json
+.env*
+!.env.example

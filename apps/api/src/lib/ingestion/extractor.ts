@@ -37,6 +37,14 @@ import {
   buildRecoveryPrompt,
   buildConsolidationPrompt,
 } from './prompts.js';
+import {
+  spineJsonSchema,
+  supportJsonSchema,
+  edgesJsonSchema,
+  recoveryJsonSchema,
+  consolidationJsonSchema,
+  repairJsonSchema,
+} from './jsonSchemas.js';
 import { forceLayout } from './layout.js';
 import {
   ExtractionSchemaError,
@@ -232,69 +240,170 @@ export class IngestionConfigError extends Error {
 interface LLMCallOpts {
   prompt: string;
   model: string;
-  /** Max output tokens. Sonnet 4.6 handles up to 8k comfortably. */
+  /**
+   * Max output tokens. Default raised from 4k → 8k after fixtures 01/05
+   * truncated mid-JSON on the wedge-quality bench (Parliament a24184eb).
+   * Sonnet 4.6 handles 8k comfortably; long extractions sometimes need it.
+   */
   maxTokens?: number;
   /** System prompt override. Default is the JSON-only contract. */
   systemPrompt?: string;
+  /**
+   * OpenRouter `response_format: json_schema` payload. Providers that honor
+   * it (OpenAI, Gemini, some others) hard-constrain generation; Anthropic
+   * via OpenRouter silently degrades to `json_object`. Either way, the
+   * downstream parse-retry catches what slips through.
+   */
+  jsonSchema?: { name: string; schema: Record<string, unknown> };
+  /**
+   * Label for logs and error messages (e.g. "single/spine"). Threaded
+   * through so the parse-retry can mark the second attempt.
+   */
+  label?: string;
 }
 
-async function callLLM(opts: LLMCallOpts): Promise<string> {
-  const { prompt, model, maxTokens = 6000 } = opts;
-  const apiKey = getOpenRouterKey();
+interface LLMCallResult {
+  content: string;
+  /** True if we hit the JSON.parse-recovery path. */
+  retried: boolean;
+  finishReason?: string;
+}
 
-  if (!apiKey) {
-    throw new IngestionConfigError(
-      'OPENROUTER_API_KEY not configured. Ingestion requires a real LLM call; the previous canned-response fallback was removed in phase-0 cleanup.',
-    );
-  }
-
-  const systemPrompt =
-    opts.systemPrompt ??
-    'You are a JSON-only reasoning-graph extractor. Respond with a single valid JSON object and nothing else. No markdown fences, no prose, no commentary.';
+async function rawOpenRouterCall(opts: {
+  apiKey: string;
+  model: string;
+  systemPrompt: string;
+  userMessages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  maxTokens: number;
+  jsonSchema?: { name: string; schema: Record<string, unknown> };
+}): Promise<{ content: string; finishReason?: string }> {
+  const responseFormat = opts.jsonSchema
+    ? {
+        type: 'json_schema' as const,
+        json_schema: {
+          name: opts.jsonSchema.name,
+          strict: true,
+          schema: opts.jsonSchema.schema,
+        },
+      }
+    : { type: 'json_object' as const };
 
   const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${opts.apiKey}`,
       'HTTP-Referer': process.env.SITE_URL || 'http://localhost:4000',
       'X-Title': 'Inos',
     },
     body: JSON.stringify({
-      model,
+      model: opts.model,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt },
+        { role: 'system', content: opts.systemPrompt },
+        ...opts.userMessages,
       ],
-      // Determinism: temperature 0.0 (was 0.3). Pass-pass determinism on
-      // the bench moved from 40% → ~80% with this single change.
       temperature: 0.0,
-      max_tokens: maxTokens,
-      // We use json_object (universally supported by OpenRouter providers)
-      // and embed the strict schema in the prompt itself. We tried json_schema
-      // mode for stricter validation but it's unevenly supported across the
-      // Anthropic + non-Anthropic models we want to stay agnostic of.
-      response_format: { type: 'json_object' },
+      max_tokens: opts.maxTokens,
+      response_format: responseFormat,
     }),
   });
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
     throw new Error(
-      `LLM call failed (${response.status}) model=${model}: ${body.slice(0, 300)}`,
+      `LLM call failed (${response.status}) model=${opts.model}: ${body.slice(0, 300)}`,
     );
   }
 
   const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{
+      message?: { content?: string };
+      finish_reason?: string;
+    }>;
   };
-
-  const content = data.choices?.[0]?.message?.content;
+  const choice = data.choices?.[0];
+  const content = choice?.message?.content;
   if (!content) {
     throw new Error('LLM returned empty response');
   }
+  return { content, finishReason: choice?.finish_reason };
+}
 
-  return content;
+function tryParseJson(raw: string): { ok: true; value: unknown } | { ok: false; error: string } {
+  try {
+    return { ok: true, value: JSON.parse(stripCodeFence(raw)) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Call OpenRouter with structured-output + JSON.parse-recovery.
+ *
+ * Layered defense (per Parliament a24184eb synthesis):
+ *   1. `response_format: json_schema` constrains generation where supported.
+ *   2. If the response still fails JSON.parse (Anthropic-degrade case, or
+ *      finish_reason=length), retry ONCE with an assistant turn echoing
+ *      the broken output + a user turn asking for a complete-and-valid
+ *      JSON object. Bumps `max_tokens` 50% to give the model headroom.
+ *   3. If the retry also fails, the error propagates to `safeParseObject`
+ *      and the caller decides (most callers re-throw to the route).
+ */
+async function callLLM(opts: LLMCallOpts): Promise<string> {
+  const { prompt, model, jsonSchema, label } = opts;
+  const maxTokens = opts.maxTokens ?? 8000;
+  const apiKey = getOpenRouterKey();
+  if (!apiKey) {
+    throw new IngestionConfigError(
+      'OPENROUTER_API_KEY not configured. Ingestion requires a real LLM call; the previous canned-response fallback was removed in phase-0 cleanup.',
+    );
+  }
+  const systemPrompt =
+    opts.systemPrompt ??
+    'You are a JSON-only reasoning-graph extractor. Respond with a single valid JSON object and nothing else. No markdown fences, no prose, no commentary.';
+
+  const first = await rawOpenRouterCall({
+    apiKey,
+    model,
+    systemPrompt,
+    userMessages: [{ role: 'user', content: prompt }],
+    maxTokens,
+    jsonSchema,
+  });
+
+  const parsed = tryParseJson(first.content);
+  if (parsed.ok && first.finishReason !== 'length') {
+    return first.content;
+  }
+
+  // Layer 2: parse failed (or generation was truncated). Retry once.
+  const reason =
+    first.finishReason === 'length'
+      ? 'Your previous output was truncated at the max_tokens limit before the JSON closed.'
+      : `Your previous output failed to parse as JSON: ${parsed.ok ? 'unknown' : parsed.error}`;
+  console.warn(
+    `[ingestion] callLLM(${label ?? 'unknown'}) parse-retry firing: finish=${first.finishReason ?? 'n/a'} parseOk=${parsed.ok}`,
+  );
+  const retried = await rawOpenRouterCall({
+    apiKey,
+    model,
+    systemPrompt,
+    userMessages: [
+      { role: 'user', content: prompt },
+      { role: 'assistant', content: first.content },
+      {
+        role: 'user',
+        content: `${reason} Respond again with a SINGLE complete, valid JSON object that satisfies the original instructions. Be more concise if needed to fit within token limits. Output ONLY the JSON object — no markdown, no prose.`,
+      },
+    ],
+    // Give the retry 50% more headroom for the same output budget.
+    maxTokens: Math.min(Math.ceil(maxTokens * 1.5), 16000),
+    jsonSchema,
+  });
+
+  // We surface the retried content even if it still doesn't parse —
+  // safeParseObject will throw a labeled error that the caller wraps.
+  return retried.content;
 }
 
 // --- JSON parsing helpers ---
@@ -482,7 +591,9 @@ async function extractChunk(
   const spineRaw = await callLLM({
     prompt: buildSpinePrompt(format, text, topic),
     model,
-    maxTokens: 4000,
+    maxTokens: 8000,
+    jsonSchema: { name: 'inos_spine', schema: spineJsonSchema },
+    label: `${chunkLabel}/spine`,
   });
   const spineParsed = safeParseObject<{
     canvasName?: string;
@@ -502,7 +613,9 @@ async function extractChunk(
   const supportRaw = await callLLM({
     prompt: buildSupportPrompt(format, text, spineJson),
     model,
-    maxTokens: 4000,
+    maxTokens: 8000,
+    jsonSchema: { name: 'inos_support', schema: supportJsonSchema },
+    label: `${chunkLabel}/support`,
   });
   const supportParsed = safeParseObject<{ nodes?: RawNode[] }>(
     supportRaw,
@@ -534,7 +647,9 @@ async function extractChunk(
   const edgeRaw = await callLLM({
     prompt: buildEdgePrompt(format, text, nodesJson),
     model,
-    maxTokens: 4000,
+    maxTokens: 8000,
+    jsonSchema: { name: 'inos_edges', schema: edgesJsonSchema },
+    label: `${chunkLabel}/edges`,
   });
   const edgeParsed = safeParseObject<{ edges?: RawEdge[] }>(
     edgeRaw,
@@ -574,7 +689,9 @@ async function recoverMissed(
     raw = await callLLM({
       prompt: buildRecoveryPrompt(text, currentJson),
       model: getValidationModel(),
-      maxTokens: 3000,
+      maxTokens: 6000,
+      jsonSchema: { name: 'inos_recovery', schema: recoveryJsonSchema },
+      label: 'recovery',
     });
   } catch (err) {
     // Recovery is best-effort. Don't fail the whole ingestion if Haiku
@@ -651,7 +768,9 @@ async function consolidateChunks(
     consRaw = await callLLM({
       prompt: buildConsolidationPrompt(perChunkJson, topic),
       model: getValidationModel(),
-      maxTokens: 3000,
+      maxTokens: 6000,
+      jsonSchema: { name: 'inos_consolidation', schema: consolidationJsonSchema },
+      label: 'consolidation',
     });
   } catch (err) {
     console.warn(
@@ -978,7 +1097,9 @@ export async function extractAndBuildGraph(
       repairRaw = await callLLM({
         prompt: repairPrompt,
         model: getValidationModel(),
-        maxTokens: 5000,
+        maxTokens: 8000,
+        jsonSchema: { name: 'inos_repair', schema: repairJsonSchema },
+        label: 'repair',
       });
     } catch (callErr) {
       console.warn(

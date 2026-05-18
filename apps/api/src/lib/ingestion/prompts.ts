@@ -125,6 +125,19 @@ CRITICAL DISAMBIGUATION:
   constraint node, not three.
 - An "open question" left at the end of a journal entry IS a question node
   (do not skip it because the entry already has a "main" question).
+- REVERSED POSITIONS — when the author writes "tentative position: X" and
+  later "updated position: NOT X" (or "argument for X" then changes mind),
+  emit BOTH positions as SEPARATE claim nodes. The original position was
+  load-bearing while the author held it; the reversal is its own claim. The
+  Pass-3 edge between them is "replaces" (new → original). DO NOT merge them
+  into a single "final position" node — that destroys the reasoning trace.
+- IMPLICIT ASSUMPTIONS — the load-bearing premise an argument depends on,
+  even if the author never wrote "I'm assuming X." When an author frames a
+  debate as "is the problem A or B?" the framing itself is the assumption
+  that the problem IS in {A, B}. When the author says "Snowflake is faster
+  for our workload," the load-bearing assumption is "warehouse choice IS the
+  bottleneck." Emit these as assumption nodes when surrounding claims
+  depend on them, even with no explicit "assuming" trigger.
 `;
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -282,6 +295,16 @@ export function buildSpinePrompt(
     'Do NOT emit fact / evidence / assumption / constraint in this pass.',
     'Do NOT emit edges in this pass.',
     '',
+    'CLAIM vs ASSUMPTION boundary (important): a `claim` is an EXPLICIT',
+    'assertion the author makes — "H2: the drop is in-funnel", "I think',
+    'we should build", "Snowflake is faster for our workload". An IMPLICIT',
+    'framing premise (the unstated belief that makes the whole debate make',
+    'sense — e.g. "warehouse choice IS the bottleneck" when debating',
+    'Snowflake vs Redshift) is NOT a claim — leave it for Pass 2 to emit',
+    'as an assumption. If a sentence is "X" stated as fact-of-the-matter',
+    'with no hedging and is what the whole entry rests on, it is likely',
+    'an assumption, not a claim.',
+    '',
     `INPUT FORMAT: ${formatInstr}`,
     topicLine,
     '',
@@ -362,12 +385,13 @@ export function buildSupportPrompt(
     '',
     NODE_TYPE_GUIDE.trim(),
     '',
-    'CALIBRATION — TYPICAL CAPS per solo-thinking entry (DO NOT EXCEED',
-    'unless the source clearly warrants):',
-    '  facts: 3–5 (the DECISION-RELEVANT numbers / dates / configs only)',
-    '  evidence: 0–2 (cited data invoked to support or counter)',
-    '  assumptions: 1–2 (load-bearing unstated beliefs)',
-    '  constraints: 1–2 (limits + reversal-conditions as ONE node)',
+    'CALIBRATION — typical solo-thinking entry has:',
+    '  facts: 3–6 (the DECISION-RELEVANT numbers / dates / configs)',
+    '  evidence: 1–4 (cited data invoked to support or counter)',
+    '  assumptions: 2–5 (load-bearing unstated beliefs — see below)',
+    '  constraints: 1–3 (limits + reversal-conditions as ONE node)',
+    'These are typical ranges, not hard caps. Emit every distinct unit you',
+    'find; only suppress true duplicates of something already in the spine.',
     '',
     'BE SELECTIVE on facts. A fact is decision-relevant if it would change',
     'the conclusion if it were different. ROLL UP related numbers into ONE',
@@ -379,9 +403,13 @@ export function buildSupportPrompt(
     'constraint node — never split. Likewise "won\'t do X because volume',
     'too low" is one constraint, not two.',
     '',
-    'PREFER UNDER-EXTRACTING to over-extracting. The downstream grader',
-    'matches one extracted node per reference node — extra nodes do not',
-    'help, they dilute signal.',
+    'BE THOROUGH on assumptions and evidence. Under-extracting these is',
+    'the dominant failure mode. Implicit framing premises ("the real',
+    'problem is the choice of warehouse" when an entry debates Snowflake',
+    'vs Redshift; "the issue is client-side" when an entry debates H1/H2)',
+    'are ASSUMPTIONS. Emit them here even if the spine already has a',
+    'related claim — the spine claim and the framing assumption are',
+    'distinct reasoning units. Only suppress true repeats of the SAME unit.',
     '',
     'PREVIOUSLY EXTRACTED SPINE (do not re-emit these):',
     spineJson,
@@ -512,6 +540,18 @@ export function buildRecoveryPrompt(
     '- Composition / opportunity-cost / positioning-mismatch reframes.',
     '- Specific technical facts buried mid-paragraph (e.g. "ra3.4xlarge x 4',
     '  nodes with dist key event_user_id").',
+    '- ORIGINAL tentative positions that were later REVERSED. If the source',
+    '  has both "tentative position: X" and "updated position: NOT X", the',
+    '  extraction must contain BOTH as separate claims. Look for "tentative",',
+    '  "initial", "first I thought", "I was going to" followed elsewhere by a',
+    '  reversal. The original is its own claim node.',
+    '- IMPLICIT load-bearing assumptions that frame the entire debate but',
+    '  are never prefixed with "I\'m assuming". E.g. if the entry argues',
+    '  "Snowflake vs Redshift", an implicit assumption is "warehouse choice',
+    '  IS the bottleneck" — emit as `assumption`. If the entry argues which',
+    '  H is right (H1/H2/H3), an implicit assumption may be "the issue is',
+    '  client-side, not server-side". These are typically the SECOND-most-',
+    '  common miss after reversed positions.',
     '',
     'EMIT FEW OR NONE if the extraction already covers the source well.',
     'False positives in recovery dilute signal more than they help.',

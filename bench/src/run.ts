@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gradePass, passesAgree } from './grade.js';
+import { gradePassSemantic, passesAgreeSemantic } from './gradeSemantic.js';
 import type {
   BenchConfig,
   BenchReport,
@@ -19,6 +20,18 @@ import type {
   PassMetrics,
   ReferenceGraph,
 } from './types.js';
+
+/**
+ * BENCH_GRADER=semantic switches to the semantic-equivalence grader
+ * (gradeSemantic.ts), which (a) collapses near-synonym edge types into
+ * families and (b) tolerates "defensible extras" — extracted edges whose
+ * endpoints are source-grounded but not in the reference. Also adds an
+ * edgeRecall metric. Default is the original strict grader.
+ */
+const GRADER = (process.env.BENCH_GRADER ?? 'strict').toLowerCase();
+const USE_SEMANTIC = GRADER === 'semantic';
+const gradePassFn = USE_SEMANTIC ? gradePassSemantic : gradePass;
+const passesAgreeFn = USE_SEMANTIC ? passesAgreeSemantic : passesAgree;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,9 +53,11 @@ function loadConfig(): BenchConfig {
 
 function loadFixtures(): { id: string; text: string; ref: ReferenceGraph }[] {
   const refFiles = readdirSync(REFERENCES_DIR).filter((f) => f.endsWith('.json'));
+  const filter = (process.env.BENCH_ONLY ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   const out: { id: string; text: string; ref: ReferenceGraph }[] = [];
   for (const f of refFiles) {
     const ref = JSON.parse(readFileSync(join(REFERENCES_DIR, f), 'utf8')) as ReferenceGraph;
+    if (filter.length > 0 && !filter.some((p) => ref.fixtureId.includes(p))) continue;
     const fixturePath = join(FIXTURES_DIR, `${ref.fixtureId}.txt`);
     const text = readFileSync(fixturePath, 'utf8');
     out.push({ id: ref.fixtureId, text, ref });
@@ -82,7 +97,11 @@ async function runFixture(
         };
       }
       const json = (await res.json()) as { graph: import('@heybeaux/inos-types').InosGraph };
-      perPass.push(gradePass(p, durationMs, json.graph, fixture.ref, fixture.text));
+      if (process.env.BENCH_DUMP_GRAPHS === '1') {
+        const dumpPath = join(BENCH_DIR, `dump-${fixture.id}-p${p}.json`);
+        writeFileSync(dumpPath, JSON.stringify({ graph: json.graph }, null, 2));
+      }
+      perPass.push(gradePassFn(p, durationMs, json.graph, fixture.ref, fixture.text));
     } catch (err) {
       return {
         fixtureId: fixture.id,
@@ -103,10 +122,17 @@ async function runFixture(
   const avgSpanCoverage = coverageSamples.length === 0
     ? -1
     : coverageSamples.reduce((a, b) => a + b, 0) / coverageSamples.length;
+  const recallSamples = perPass
+    .map((p) => p.edgeRecall)
+    .filter((r): r is number => typeof r === 'number');
+  const avgEdgeRecall =
+    recallSamples.length === 0
+      ? undefined
+      : recallSamples.reduce((a, b) => a + b, 0) / recallSamples.length;
 
   let deterministic = true;
   for (let i = 1; i < perPass.length; i++) {
-    if (!passesAgree(perPass[0], perPass[i])) {
+    if (!passesAgreeFn(perPass[0], perPass[i])) {
       deterministic = false;
       break;
     }
@@ -116,7 +142,14 @@ async function runFixture(
     fixtureId: fixture.id,
     passes,
     perPassMetrics: perPass,
-    aggregate: { avgNodeRecall, avgEdgePrecision, schemaValidRate, avgDurationMs, avgSpanCoverage },
+    aggregate: {
+      avgNodeRecall,
+      avgEdgePrecision,
+      schemaValidRate,
+      avgDurationMs,
+      avgSpanCoverage,
+      ...(avgEdgeRecall !== undefined ? { avgEdgeRecall } : {}),
+    },
     deterministic,
   };
 }
@@ -125,6 +158,7 @@ function summarize(report: BenchReport): void {
   console.log('\n=== Inos ingestion bench ===');
   console.log(`API: ${report.config.apiUrl}`);
   console.log(`Passes/fixture: ${report.config.passes}`);
+  console.log(`Grader: ${USE_SEMANTIC ? 'semantic (edge families + defensible extras + edgeRecall)' : 'strict'}`);
   console.log(`Thresholds: recall≥${report.config.thresholds.nodeRecall}, precision≥${report.config.thresholds.edgePrecision}, schemaValid≥${report.config.thresholds.schemaValidRate}`);
   console.log('');
   for (const r of report.results) {
@@ -134,8 +168,10 @@ function summarize(report: BenchReport): void {
     }
     const a = r.aggregate;
     const cov = a.avgSpanCoverage < 0 ? 'n/a' : a.avgSpanCoverage.toFixed(2);
+    const edgeRecallStr =
+      a.avgEdgeRecall !== undefined ? ` eRec=${a.avgEdgeRecall.toFixed(2)}` : '';
     console.log(
-      `  ${r.fixtureId.padEnd(28)} recall=${a.avgNodeRecall.toFixed(2)} prec=${a.avgEdgePrecision.toFixed(2)} schema=${a.schemaValidRate.toFixed(2)} spanCov=${cov} det=${r.deterministic ? 'Y' : 'N'} avgMs=${a.avgDurationMs.toFixed(0)}`,
+      `  ${r.fixtureId.padEnd(28)} recall=${a.avgNodeRecall.toFixed(2)} prec=${a.avgEdgePrecision.toFixed(2)}${edgeRecallStr} schema=${a.schemaValidRate.toFixed(2)} spanCov=${cov} det=${r.deterministic ? 'Y' : 'N'} avgMs=${a.avgDurationMs.toFixed(0)}`,
     );
   }
 

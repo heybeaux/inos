@@ -1,9 +1,9 @@
 {
-  "startedAt": "2026-05-17T05:53:38.327Z",
-  "finishedAt": "2026-05-17T06:05:05.559Z",
+  "startedAt": "2026-05-18T02:34:04.405Z",
+  "finishedAt": "2026-05-18T02:41:26.326Z",
   "config": {
     "apiUrl": "http://localhost:4000",
-    "passes": 2,
+    "passes": 3,
     "thresholds": {
       "nodeRecall": 0.85,
       "edgePrecision": 0.8,
@@ -12,405 +12,240 @@
   },
   "results": [
     {
-      "fixtureId": "01-ai-conversation-log",
-      "passes": 2,
-      "perPassMetrics": [
-        {
-          "pass": 1,
-          "nodesExtracted": 23,
-          "edgesExtracted": 24,
-          "nodeRecall": 0.21428571428571427,
-          "edgePrecision": 0,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "fact-redshift-cost",
-            "fact-rollup-scan",
-            "decision-fix-schema"
-          ],
-          "missedNodeIds": [
-            "q-migrate-snowflake",
-            "fact-p95-28s",
-            "fact-cluster-config",
-            "claim-snowflake-faster",
-            "assumption-real-problem-warehouse",
-            "insight-schema-is-problem",
-            "opt-fix-schema",
-            "opt-migrate-snowflake",
-            "opt-lakehouse",
-            "constraint-data-growth",
-            "reversal-condition"
-          ],
-          "spuriousEdgeCount": 24,
-          "durationMs": 63953,
-          "spanCoverage": 1,
-          "matchedNodesWithSpan": 3,
-          "matchedNodesWithVerifiedSpan": 3
-        },
-        {
-          "pass": 2,
-          "nodesExtracted": 23,
-          "edgesExtracted": 25,
-          "nodeRecall": 0.21428571428571427,
-          "edgePrecision": 0,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "fact-redshift-cost",
-            "fact-cluster-config",
-            "decision-fix-schema"
-          ],
-          "missedNodeIds": [
-            "q-migrate-snowflake",
-            "fact-p95-28s",
-            "fact-rollup-scan",
-            "claim-snowflake-faster",
-            "assumption-real-problem-warehouse",
-            "insight-schema-is-problem",
-            "opt-fix-schema",
-            "opt-migrate-snowflake",
-            "opt-lakehouse",
-            "constraint-data-growth",
-            "reversal-condition"
-          ],
-          "spuriousEdgeCount": 25,
-          "durationMs": 66248,
-          "spanCoverage": 1,
-          "matchedNodesWithSpan": 3,
-          "matchedNodesWithVerifiedSpan": 3
-        }
-      ],
-      "aggregate": {
-        "avgNodeRecall": 0.21428571428571427,
-        "avgEdgePrecision": 0,
-        "schemaValidRate": 1,
-        "avgDurationMs": 65100.5,
-        "avgSpanCoverage": 1
-      },
-      "deterministic": false
-    },
-    {
-      "fixtureId": "02-research-notes",
-      "passes": 2,
-      "perPassMetrics": [
-        {
-          "pass": 1,
-          "nodesExtracted": 26,
-          "edgesExtracted": 28,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.07142857142857142,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "fact-desktop-tied",
-            "fact-lcp-gap",
-            "fact-stripe-error-rate",
-            "h1-itp-storage",
-            "h2-lcp-rage-quit",
-            "challenge-h4-utm-stable",
-            "open-q-fix"
-          ],
-          "missedNodeIds": [
-            "q-safari-conversion-drop",
-            "fact-safari-conversion",
-            "fact-applepay-launch",
-            "h3-applepay-silent-fail",
-            "h4-low-intent-traffic",
-            "challenge-h2-funnel-shape",
-            "assumption-server-side-fine",
-            "decision-applepay-holdout"
-          ],
-          "spuriousEdgeCount": 26,
-          "durationMs": 73131,
-          "spanCoverage": 1,
-          "matchedNodesWithSpan": 7,
-          "matchedNodesWithVerifiedSpan": 7
-        },
-        {
-          "pass": 2,
-          "nodesExtracted": 27,
-          "edgesExtracted": 29,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.10344827586206896,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "fact-desktop-tied",
-            "fact-lcp-gap",
-            "fact-stripe-error-rate",
-            "h1-itp-storage",
-            "h2-lcp-rage-quit",
-            "decision-applepay-holdout",
-            "open-q-fix"
-          ],
-          "missedNodeIds": [
-            "q-safari-conversion-drop",
-            "fact-safari-conversion",
-            "fact-applepay-launch",
-            "h3-applepay-silent-fail",
-            "h4-low-intent-traffic",
-            "challenge-h2-funnel-shape",
-            "challenge-h4-utm-stable",
-            "assumption-server-side-fine"
-          ],
-          "spuriousEdgeCount": 26,
-          "durationMs": 79297,
-          "spanCoverage": 1,
-          "matchedNodesWithSpan": 7,
-          "matchedNodesWithVerifiedSpan": 7
-        }
-      ],
-      "aggregate": {
-        "avgNodeRecall": 0.4666666666666667,
-        "avgEdgePrecision": 0.0874384236453202,
-        "schemaValidRate": 1,
-        "avgDurationMs": 76214,
-        "avgSpanCoverage": 1
-      },
-      "deterministic": false
-    },
-    {
-      "fixtureId": "03-decision-journal",
-      "passes": 2,
-      "perPassMetrics": [
-        {
-          "pass": 1,
-          "nodesExtracted": 22,
-          "edgesExtracted": 25,
-          "nodeRecall": 0.14285714285714285,
-          "edgePrecision": 0,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "fact-solo-usage",
-            "fact-ttf-canvas"
-          ],
-          "missedNodeIds": [
-            "q-keep-or-rebuild",
-            "fact-activation-rate",
-            "fact-invite-drop",
-            "assumption-need-invite-step",
-            "insight-positioning-mismatch",
-            "opt-a-remove-invite",
-            "opt-b-full-rebuild",
-            "opt-c-personalize",
-            "decision-rebuild",
-            "constraint-no-ab-test",
-            "reversal-conditions",
-            "open-q-teammate-path"
-          ],
-          "spuriousEdgeCount": 25,
-          "durationMs": 63149,
-          "spanCoverage": 1,
-          "matchedNodesWithSpan": 2,
-          "matchedNodesWithVerifiedSpan": 2
-        },
-        {
-          "pass": 2,
-          "nodesExtracted": 21,
-          "edgesExtracted": 23,
-          "nodeRecall": 0.2857142857142857,
-          "edgePrecision": 0.043478260869565216,
-          "schemaValid": true,
-          "matchedNodeIds": [
-            "decision-rebuild",
-            "fact-activation-rate",
-            "fact-solo-usage",
-            "fact-ttf-canvas"
-          ],
-          "missedNodeIds": [
-            "q-keep-or-rebuild",
-            "fact-invite-drop",
-            "assumption-need-invite-step",
-            "insight-positioning-mismatch",
-            "opt-a-remove-invite",
-            "opt-b-full-rebuild",
-            "opt-c-personalize",
-            "constraint-no-ab-test",
-            "reversal-conditions",
-            "open-q-teammate-path"
-          ],
-          "spuriousEdgeCount": 22,
-          "durationMs": 60408,
-          "spanCoverage": 1,
-          "matchedNodesWithSpan": 4,
-          "matchedNodesWithVerifiedSpan": 4
-        }
-      ],
-      "aggregate": {
-        "avgNodeRecall": 0.21428571428571427,
-        "avgEdgePrecision": 0.021739130434782608,
-        "schemaValidRate": 1,
-        "avgDurationMs": 61778.5,
-        "avgSpanCoverage": 1
-      },
-      "deterministic": false
-    },
-    {
       "fixtureId": "04-self-debate",
-      "passes": 2,
+      "passes": 3,
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 21,
-          "edgesExtracted": 23,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.08695652173913043,
+          "nodesExtracted": 32,
+          "edgesExtracted": 35,
+          "nodeRecall": 0.8,
+          "edgePrecision": 1,
+          "edgeRecall": 0.3333333333333333,
           "schemaValid": true,
           "matchedNodeIds": [
+            "q-open-source",
             "claim-recruiting-magnet",
             "claim-schelling-point",
             "claim-algorithm-is-product",
             "challenge-algorithm-not-product",
             "claim-restrictive-license",
+            "challenge-license-worst-of-both",
             "claim-open-boring-80",
-            "decision-write-blog-posts"
+            "meta-risk-aversion",
+            "decision-write-blog-posts",
+            "branch-revisit-at-series-b",
+            "branch-fast-follow-competitor"
           ],
           "missedNodeIds": [
-            "q-open-source",
             "refine-median-competitor",
-            "challenge-license-worst-of-both",
             "challenge-boring-not-interesting",
-            "assumption-primitives-are-interesting",
-            "branch-revisit-at-series-b",
-            "branch-fast-follow-competitor",
-            "meta-risk-aversion"
+            "assumption-primitives-are-interesting"
           ],
-          "spuriousEdgeCount": 21,
-          "durationMs": 67646,
+          "spuriousEdgeCount": 0,
+          "durationMs": 70904,
           "spanCoverage": 1,
-          "matchedNodesWithSpan": 7,
-          "matchedNodesWithVerifiedSpan": 7
+          "matchedNodesWithSpan": 10,
+          "matchedNodesWithVerifiedSpan": 10
         },
         {
           "pass": 2,
-          "nodesExtracted": 22,
-          "edgesExtracted": 26,
-          "nodeRecall": 0.4666666666666667,
-          "edgePrecision": 0.038461538461538464,
+          "nodesExtracted": 35,
+          "edgesExtracted": 38,
+          "nodeRecall": 0.8666666666666667,
+          "edgePrecision": 1,
+          "edgeRecall": 0.2,
           "schemaValid": true,
           "matchedNodeIds": [
+            "q-open-source",
             "claim-recruiting-magnet",
             "claim-schelling-point",
             "claim-algorithm-is-product",
             "challenge-algorithm-not-product",
             "claim-restrictive-license",
+            "challenge-license-worst-of-both",
             "claim-open-boring-80",
-            "decision-write-blog-posts"
+            "decision-write-blog-posts",
+            "branch-revisit-at-series-b",
+            "branch-fast-follow-competitor",
+            "challenge-boring-not-interesting",
+            "meta-risk-aversion"
           ],
           "missedNodeIds": [
-            "q-open-source",
             "refine-median-competitor",
+            "assumption-primitives-are-interesting"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 67367,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 11,
+          "matchedNodesWithVerifiedSpan": 11
+        },
+        {
+          "pass": 3,
+          "nodesExtracted": 33,
+          "edgesExtracted": 34,
+          "nodeRecall": 0.8,
+          "edgePrecision": 1,
+          "edgeRecall": 0.26666666666666666,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-open-source",
+            "claim-recruiting-magnet",
+            "claim-schelling-point",
+            "claim-algorithm-is-product",
+            "challenge-algorithm-not-product",
+            "claim-restrictive-license",
             "challenge-license-worst-of-both",
-            "challenge-boring-not-interesting",
-            "assumption-primitives-are-interesting",
+            "claim-open-boring-80",
+            "decision-write-blog-posts",
             "branch-revisit-at-series-b",
             "branch-fast-follow-competitor",
             "meta-risk-aversion"
           ],
-          "spuriousEdgeCount": 25,
-          "durationMs": 77499,
+          "missedNodeIds": [
+            "refine-median-competitor",
+            "challenge-boring-not-interesting",
+            "assumption-primitives-are-interesting"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 69124,
           "spanCoverage": 1,
-          "matchedNodesWithSpan": 7,
-          "matchedNodesWithVerifiedSpan": 7
+          "matchedNodesWithSpan": 10,
+          "matchedNodesWithVerifiedSpan": 10
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.4666666666666667,
-        "avgEdgePrecision": 0.06270903010033445,
+        "avgNodeRecall": 0.8222222222222223,
+        "avgEdgePrecision": 1,
         "schemaValidRate": 1,
-        "avgDurationMs": 72572.5,
-        "avgSpanCoverage": 1
+        "avgDurationMs": 69131.66666666667,
+        "avgSpanCoverage": 1,
+        "avgEdgeRecall": 0.26666666666666666
       },
-      "deterministic": true
+      "deterministic": false
     },
     {
       "fixtureId": "05-messy-markdown",
-      "passes": 2,
+      "passes": 3,
       "perPassMetrics": [
         {
           "pass": 1,
-          "nodesExtracted": 22,
-          "edgesExtracted": 27,
-          "nodeRecall": 0.1875,
-          "edgePrecision": 0.037037037037037035,
+          "nodesExtracted": 42,
+          "edgesExtracted": 51,
+          "nodeRecall": 0.75,
+          "edgePrecision": 1,
+          "edgeRecall": 0.13333333333333333,
           "schemaValid": true,
           "matchedNodeIds": [
-            "fact-ld-pricing",
-            "decision-buy-launchdarkly",
-            "open-q-growthbook"
-          ],
-          "missedNodeIds": [
             "q-build-vs-buy",
-            "fact-current-flag-state",
-            "fact-build-estimate",
-            "claim-build-cheaper",
+            "open-q-growthbook",
             "claim-need-only-basics",
-            "assumption-low-flag-velocity",
-            "challenge-streaming-complexity",
-            "challenge-audit-soc2",
-            "challenge-targeting-complexity",
             "tentative-build-position",
+            "challenge-streaming-complexity",
+            "challenge-targeting-complexity",
             "insight-opportunity-cost",
-            "insight-2x-multiplier",
+            "decision-buy-launchdarkly",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
             "reversal-conditions"
           ],
-          "spuriousEdgeCount": 26,
-          "durationMs": 57014,
+          "missedNodeIds": [
+            "claim-build-cheaper",
+            "assumption-low-flag-velocity",
+            "challenge-audit-soc2",
+            "insight-2x-multiplier"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 85451,
           "spanCoverage": 1,
-          "matchedNodesWithSpan": 3,
-          "matchedNodesWithVerifiedSpan": 3
+          "matchedNodesWithSpan": 10,
+          "matchedNodesWithVerifiedSpan": 10
         },
         {
           "pass": 2,
-          "nodesExtracted": 20,
-          "edgesExtracted": 23,
-          "nodeRecall": 0.1875,
-          "edgePrecision": 0.043478260869565216,
+          "nodesExtracted": 30,
+          "edgesExtracted": 40,
+          "nodeRecall": 0.8125,
+          "edgePrecision": 1,
+          "edgeRecall": 0.26666666666666666,
           "schemaValid": true,
           "matchedNodeIds": [
-            "fact-ld-pricing",
-            "decision-buy-launchdarkly",
-            "open-q-growthbook"
-          ],
-          "missedNodeIds": [
             "q-build-vs-buy",
-            "fact-current-flag-state",
-            "fact-build-estimate",
-            "claim-build-cheaper",
-            "claim-need-only-basics",
-            "assumption-low-flag-velocity",
-            "challenge-streaming-complexity",
-            "challenge-audit-soc2",
-            "challenge-targeting-complexity",
             "tentative-build-position",
+            "challenge-streaming-complexity",
+            "challenge-targeting-complexity",
             "insight-opportunity-cost",
             "insight-2x-multiplier",
+            "decision-buy-launchdarkly",
+            "open-q-growthbook",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
+            "assumption-low-flag-velocity",
             "reversal-conditions"
           ],
-          "spuriousEdgeCount": 22,
-          "durationMs": 78877,
+          "missedNodeIds": [
+            "claim-build-cheaper",
+            "claim-need-only-basics",
+            "challenge-audit-soc2"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 75952,
           "spanCoverage": 1,
-          "matchedNodesWithSpan": 3,
-          "matchedNodesWithVerifiedSpan": 3
+          "matchedNodesWithSpan": 11,
+          "matchedNodesWithVerifiedSpan": 11
+        },
+        {
+          "pass": 3,
+          "nodesExtracted": 33,
+          "edgesExtracted": 44,
+          "nodeRecall": 0.75,
+          "edgePrecision": 1,
+          "edgeRecall": 0.26666666666666666,
+          "schemaValid": true,
+          "matchedNodeIds": [
+            "q-build-vs-buy",
+            "tentative-build-position",
+            "challenge-streaming-complexity",
+            "challenge-targeting-complexity",
+            "insight-opportunity-cost",
+            "decision-buy-launchdarkly",
+            "open-q-growthbook",
+            "fact-ld-pricing",
+            "fact-build-estimate",
+            "fact-current-flag-state",
+            "assumption-low-flag-velocity",
+            "reversal-conditions"
+          ],
+          "missedNodeIds": [
+            "claim-build-cheaper",
+            "claim-need-only-basics",
+            "challenge-audit-soc2",
+            "insight-2x-multiplier"
+          ],
+          "spuriousEdgeCount": 0,
+          "durationMs": 73096,
+          "spanCoverage": 1,
+          "matchedNodesWithSpan": 11,
+          "matchedNodesWithVerifiedSpan": 11
         }
       ],
       "aggregate": {
-        "avgNodeRecall": 0.1875,
-        "avgEdgePrecision": 0.040257648953301126,
+        "avgNodeRecall": 0.7708333333333334,
+        "avgEdgePrecision": 1,
         "schemaValidRate": 1,
-        "avgDurationMs": 67945.5,
-        "avgSpanCoverage": 1
+        "avgDurationMs": 78166.33333333333,
+        "avgSpanCoverage": 1,
+        "avgEdgeRecall": 0.22222222222222224
       },
-      "deterministic": true
+      "deterministic": false
     }
   ],
   "passed": false,
   "failures": [
-    "01-ai-conversation-log: nodeRecall 0.214 < 0.85",
-    "01-ai-conversation-log: edgePrecision 0.000 < 0.8",
-    "02-research-notes: nodeRecall 0.467 < 0.85",
-    "02-research-notes: edgePrecision 0.087 < 0.8",
-    "03-decision-journal: nodeRecall 0.214 < 0.85",
-    "03-decision-journal: edgePrecision 0.022 < 0.8",
-    "04-self-debate: nodeRecall 0.467 < 0.85",
-    "04-self-debate: edgePrecision 0.063 < 0.8",
-    "05-messy-markdown: nodeRecall 0.188 < 0.85",
-    "05-messy-markdown: edgePrecision 0.040 < 0.8"
+    "04-self-debate: nodeRecall 0.822 < 0.85",
+    "05-messy-markdown: nodeRecall 0.771 < 0.85"
   ]
 }
