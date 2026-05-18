@@ -6,6 +6,8 @@ import { useGraphStore, getNodeColor } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+
 export function QueryPanel() {
   const { nodes, edges, activePanel, setActivePanel } = useGraphStore();
   const [query, setQuery] = useState('');
@@ -24,7 +26,7 @@ export function QueryPanel() {
     setUsedModel(null);
 
     try {
-      const resp = await fetch('http://localhost:4000/api/query', {
+      const resp = await fetch(`${API_BASE}/api/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
