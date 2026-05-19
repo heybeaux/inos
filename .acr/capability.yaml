@@ -1,0 +1,56 @@
+name: inos
+type: capability
+version: 1.0.0
+description: "Inosculate — 4D reasoning graph for human + AI collaborative thinking. First user-facing Ginnung faculty wedge; solo-thinker beachhead. Uses Sonder/Parliament/Lattice/Engram in-process."
+
+provides:
+  - thinking-surface
+  - reasoning-graph
+  - collaborative-canvas
+
+requires:
+  tools: []
+  capabilities:
+    - sonder
+    - parliament
+    - lattice
+    - engram
+    - acr
+  context: []
+
+budget:
+  index: 20
+  summary: 200
+  standard: 1250
+  deep: 2500
+
+activation:
+  triggers:
+    - type: pattern
+      match: "(inos|inosculate|reasoning graph|thinking surface|4D graph|heybeaux/inos)"
+  trigger_logic: OR
+  co_activates:
+    - ginnung
+    - sonder
+  conflicts: []
+
+permissions:
+  data:
+    inos_metadata: read-only
+
+behavioral:
+  core: |
+    When discussing or working on Inos:
+    1. Inos is the first user-facing Ginnung faculty wedge — a 4D reasoning graph (nodes, edges, branches, time).
+    2. Beachhead is SOLO, not teams. Yjs / multiplayer is a future feature, not a strategic fork. Fixtures should bias solo-thinking transcripts.
+    3. Faculties run IN-PROCESS and are load-bearing for v1: Sonder (runtime), Parliament (reasoning), Lattice (governance), Engram (local, for dedup). Don't trim these from v1.
+    4. Agents participate IN the graph (post signed Sonder events) rather than chat-adjacent.
+    5. Default branch is `master`, not `main` — important for PRs and CI assumptions.
+    6. Engram is used locally for dedup against the graph store; it is NOT the canonical store.
+  overlays: []
+
+verification:
+  checklist:
+    - "Did not redesign for multiplayer at v1"
+    - "Treated faculty wiring as load-bearing, not Phase 5"
+    - "Used `master` (not `main`) for branch references"
