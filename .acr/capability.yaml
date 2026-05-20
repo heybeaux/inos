@@ -11,11 +11,11 @@ provides:
 requires:
   tools: []
   capabilities:
-    - sonder
-    - parliament
-    - lattice
-    - engram
-    - acr
+    - name: sonder
+    - name: parliament
+    - name: lattice
+    - name: engram
+    - name: acr
   context: []
 
 budget:
